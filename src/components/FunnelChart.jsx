@@ -1,4 +1,5 @@
 export default function FunnelChart({ steps }) {
+  if (!steps || steps.length === 0) return null
   const maxVal = Math.max(...steps.map(s => s.value), 1)
 
   return (

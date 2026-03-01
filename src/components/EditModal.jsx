@@ -74,7 +74,7 @@ export default function EditModal({ closers, setters, viewerPin, onSave, onClose
         <button className="kpi-close" onClick={onClose}>✕</button>
         <div className="edit-header">
           <h2>Editor de Datos</h2>
-          <span className="kpi-badge" style={{ background: '#54a0ff' }}>{role.toUpperCase()}</span>
+          <span className="kpi-badge" style={{ background: '#54a0ff' }}>{(role || '').toUpperCase()}</span>
         </div>
 
         <div className="edit-viewer-pin">

@@ -144,6 +144,7 @@ export default function DailyLogModal({ personName, personType, personPin, perso
   const handleConfirm = () => setStep('confirm')
 
   const handleSubmit = async () => {
+    if (!selectedPerson) return
     setStep('submitting')
     setErrorMsg('')
 

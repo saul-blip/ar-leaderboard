@@ -147,6 +147,7 @@ export default function App() {
     setAuthenticated(false)
     setAccessInfo(null)
     setAuthRole(null)
+    setSelected(null)
     setCurrentMonth(getCurrentMonth())
     loadData(getCurrentMonth())
   }

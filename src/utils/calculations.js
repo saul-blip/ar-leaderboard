@@ -66,10 +66,12 @@ export function effectivenessColor(val) {
 }
 
 export function getInitials(name) {
+  if (!name) return '?'
   return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
 }
 
 export function nameToColor(name) {
+  if (!name) return 'linear-gradient(135deg, hsl(220, 70%, 45%), hsl(260, 80%, 55%))'
   let hash = 0
   for (let i = 0; i < name.length; i++) {
     hash = name.charCodeAt(i) + ((hash << 5) - hash)
