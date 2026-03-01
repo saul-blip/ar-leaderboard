@@ -44,12 +44,12 @@ export default function Column({ type, data, onSelect }) {
           value={`${avgEff}%`}
           color={effectivenessColor(avgEff)}
         />
-        {!isCloser && (
-          <Stat
-            label="Show Rate"
-            value={`${data.reduce((s, st) => s + st.shows, 0) && Math.round(data.reduce((s, st) => s + st.shows, 0) / data.reduce((s, st) => s + st.citasAgendadas, 0) * 100)}%`}
-          />
-        )}
+        {!isCloser && (() => {
+          const totalShows = data.reduce((s, st) => s + st.shows, 0)
+          const totalCitas = data.reduce((s, st) => s + st.citasAgendadas, 0)
+          const showRate = totalCitas > 0 ? Math.round((totalShows / totalCitas) * 100) : 0
+          return <Stat label="Show Rate" value={`${showRate}%`} />
+        })()}
       </div>
 
       <Podium

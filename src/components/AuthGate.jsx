@@ -1,18 +1,20 @@
 import { useState } from 'react'
 
-const PINS = {
+const DEFAULT_PINS = {
   '1234': 'owner',
   '5678': 'manager',
   '0000': 'admin',
 }
 
-export default function AuthGate({ onAuth, onClose }) {
+export default function AuthGate({ onAuth, onClose, adminPins }) {
   const [pin, setPin] = useState('')
   const [error, setError] = useState(false)
 
+  const pins = adminPins || DEFAULT_PINS
+
   const handleSubmit = (e) => {
     e.preventDefault()
-    const role = PINS[pin]
+    const role = pins[pin]
     if (role) {
       onAuth(role)
     } else {

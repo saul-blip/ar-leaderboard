@@ -1,12 +1,13 @@
 import Avatar from './Avatar'
 import FunnelChart from './FunnelChart'
 import Stat from './Stat'
+import PersonalHistory from './PersonalHistory'
 import {
   closerSales, closerEffectiveness, closerAppointmentToVisit,
   closerApprovalRate, effectivenessColor,
 } from '../utils/calculations'
 
-export default function CloserKpi({ person, onClose }) {
+export default function CloserKpi({ person, onClose, accessInfo }) {
   const sales = closerSales(person)
   const eff = closerEffectiveness(person)
   const citaVisita = closerAppointmentToVisit(person)
@@ -46,7 +47,7 @@ export default function CloserKpi({ person, onClose }) {
           <div className="kpi-grid">
             <Stat label="Total" value={sales} color="#e94560" />
             <Stat label="Self-Gen" value={person.selfGen} />
-            <Stat label="Call Center" value={person.callCenter} />
+            <Stat label="Others" value={person.callCenter} />
           </div>
         </div>
 
@@ -65,6 +66,7 @@ export default function CloserKpi({ person, onClose }) {
             <Stat label="Aplicaron" value={person.aplicaron} color="#54a0ff" />
             <Stat label="Aprobados" value={person.aprobados} color="#00e676" />
             <Stat label="Negados" value={person.negados} color="#ff5252" />
+            <Stat label="Cancelaciones" value={person.cancels} color="#ff9800" />
           </div>
         </div>
 
@@ -78,6 +80,11 @@ export default function CloserKpi({ person, onClose }) {
         </div>
 
         <FunnelChart steps={funnelSteps} />
+
+        {(accessInfo?.type === 'admin' ||
+          (accessInfo?.type === 'individual' && accessInfo.name === person.name)) && (
+          <PersonalHistory personName={person.name} personType="closers" />
+        )}
       </div>
     </div>
   )

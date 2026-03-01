@@ -2,19 +2,22 @@ import { useState } from 'react'
 
 const CLOSER_FIELDS = [
   { key: 'name', label: 'Nombre', type: 'text' },
+  { key: 'pin', label: 'PIN', type: 'text' },
   { key: 'photo', label: 'URL Foto', type: 'text' },
   { key: 'selfGen', label: 'Self-Gen', type: 'number' },
-  { key: 'callCenter', label: 'Call Center', type: 'number' },
+  { key: 'callCenter', label: 'Others', type: 'number' },
   { key: 'sits', label: 'Sits', type: 'number' },
   { key: 'citasPropias', label: 'Citas Propias', type: 'number' },
   { key: 'visitasPropias', label: 'Visitas Propias', type: 'number' },
   { key: 'aplicaron', label: 'Aplicaron', type: 'number' },
   { key: 'aprobados', label: 'Aprobados', type: 'number' },
   { key: 'negados', label: 'Negados', type: 'number' },
+  { key: 'cancels', label: 'Cancel.', type: 'number' },
 ]
 
 const SETTER_FIELDS = [
   { key: 'name', label: 'Nombre', type: 'text' },
+  { key: 'pin', label: 'PIN', type: 'text' },
   { key: 'photo', label: 'URL Foto', type: 'text' },
   { key: 'leadsAsignados', label: 'Leads Asig.', type: 'number' },
   { key: 'contactados', label: 'Contactados', type: 'number' },
@@ -27,17 +30,18 @@ const SETTER_FIELDS = [
 ]
 
 function newCloser(id) {
-  return { id, name: '', photo: '', selfGen: 0, callCenter: 0, sits: 0, citasPropias: 0, visitasPropias: 0, aplicaron: 0, aprobados: 0, negados: 0 }
+  return { id, name: '', pin: '', photo: '', selfGen: 0, callCenter: 0, sits: 0, citasPropias: 0, visitasPropias: 0, aplicaron: 0, aprobados: 0, negados: 0, cancels: 0 }
 }
 
 function newSetter(id) {
-  return { id, name: '', photo: '', leadsAsignados: 0, contactados: 0, citasAgendadas: 0, shows: 0, ventas: 0, aplicaron: 0, aprobados: 0, negados: 0 }
+  return { id, name: '', pin: '', photo: '', leadsAsignados: 0, contactados: 0, citasAgendadas: 0, shows: 0, ventas: 0, aplicaron: 0, aprobados: 0, negados: 0 }
 }
 
-export default function EditModal({ closers, setters, onSave, onClose, role }) {
+export default function EditModal({ closers, setters, viewerPin, onSave, onClose, role }) {
   const [tab, setTab] = useState('closers')
   const [editClosers, setEditClosers] = useState(JSON.parse(JSON.stringify(closers)))
   const [editSetters, setEditSetters] = useState(JSON.parse(JSON.stringify(setters)))
+  const [editViewerPin, setEditViewerPin] = useState(viewerPin)
 
   const data = tab === 'closers' ? editClosers : editSetters
   const setData = tab === 'closers' ? setEditClosers : setEditSetters
@@ -60,7 +64,7 @@ export default function EditModal({ closers, setters, onSave, onClose, role }) {
   }
 
   const handleSave = () => {
-    onSave(editClosers, editSetters)
+    onSave(editClosers, editSetters, editViewerPin)
     onClose()
   }
 
@@ -71,6 +75,18 @@ export default function EditModal({ closers, setters, onSave, onClose, role }) {
         <div className="edit-header">
           <h2>Editor de Datos</h2>
           <span className="kpi-badge" style={{ background: '#54a0ff' }}>{role.toUpperCase()}</span>
+        </div>
+
+        <div className="edit-viewer-pin">
+          <label>PIN General de Visualización:</label>
+          <input
+            type="text"
+            value={editViewerPin}
+            onChange={(e) => setEditViewerPin(e.target.value.replace(/\D/g, ''))}
+            maxLength={6}
+            className="edit-input"
+            style={{ width: 100, textAlign: 'center', fontFamily: 'var(--font-display)', fontSize: 20, letterSpacing: 4 }}
+          />
         </div>
 
         <div className="edit-tabs">
@@ -95,11 +111,13 @@ export default function EditModal({ closers, setters, onSave, onClose, role }) {
                 {fields.map(f => (
                   <input
                     key={f.key}
-                    type={f.type}
+                    type={f.key === 'pin' ? 'text' : f.type}
                     value={person[f.key]}
                     onChange={(e) => updateField(idx, f.key, f.type === 'number' ? parseFloat(e.target.value) || 0 : e.target.value)}
-                    className="edit-input"
+                    className={`edit-input ${f.key === 'pin' ? 'edit-input-pin' : ''}`}
                     step={f.key === 'ventas' ? '0.5' : '1'}
+                    maxLength={f.key === 'pin' ? 6 : undefined}
+                    placeholder={f.key === 'pin' ? '----' : ''}
                   />
                 ))}
                 <button className="edit-remove" onClick={() => removePerson(idx)}>✕</button>

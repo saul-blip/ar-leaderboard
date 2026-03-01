@@ -5,9 +5,10 @@ const MEDALS = ['🥇', '🥈', '🥉']
 const MEDAL_COLORS = ['#FFD700', '#C0C0C0', '#CD7F32']
 
 export default function Podium({ people, type, getSales, getDenominator, getEffectiveness, onSelect }) {
-  if (people.length < 3) return null
+  if (people.length === 0) return null
 
-  const order = [1, 0, 2]
+  // Show podium with available people (1, 2, or 3)
+  const order = people.length >= 3 ? [1, 0, 2] : people.length === 2 ? [1, 0] : [0]
 
   return (
     <div className="podium">

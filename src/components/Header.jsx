@@ -1,10 +1,6 @@
-import { MONTHS_ES } from '../utils/calculations'
+import { formatMonthLabel } from '../utils/sheets'
 
-export default function Header({ onEdit, onTv, tvMode }) {
-  const now = new Date()
-  const month = MONTHS_ES[now.getMonth()]
-  const year = now.getFullYear()
-
+export default function Header({ onEdit, onTv, tvMode, currentMonth, isLive }) {
   return (
     <header className="header">
       <div className="header-left">
@@ -16,11 +12,15 @@ export default function Header({ onEdit, onTv, tvMode }) {
       <div className="header-center">
         <h1 className="title">GLOBAL SALES SCORE</h1>
         <div className="header-meta">
-          <span className="badge-live">
-            <span className="live-dot"></span>
-            LIVE
-          </span>
-          <span className="header-date">{month} {year}</span>
+          {isLive ? (
+            <span className="badge-live">
+              <span className="live-dot"></span>
+              LIVE
+            </span>
+          ) : (
+            <span className="badge-past">ARCHIVO</span>
+          )}
+          <span className="header-date">{formatMonthLabel(currentMonth)}</span>
         </div>
       </div>
       <div className="header-right">

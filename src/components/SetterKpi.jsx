@@ -1,11 +1,12 @@
 import Avatar from './Avatar'
 import FunnelChart from './FunnelChart'
 import Stat from './Stat'
+import PersonalHistory from './PersonalHistory'
 import {
   setterLeadToCita, setterShowRate, setterApprovalRate, effectivenessColor,
 } from '../utils/calculations'
 
-export default function SetterKpi({ person, onClose }) {
+export default function SetterKpi({ person, onClose, accessInfo }) {
   const leadCita = setterLeadToCita(person)
   const showRate = setterShowRate(person)
   const approval = setterApprovalRate(person)
@@ -76,6 +77,11 @@ export default function SetterKpi({ person, onClose }) {
         </div>
 
         <FunnelChart steps={funnelSteps} />
+
+        {(accessInfo?.type === 'admin' ||
+          (accessInfo?.type === 'individual' && accessInfo.name === person.name)) && (
+          <PersonalHistory personName={person.name} personType="setters" />
+        )}
       </div>
     </div>
   )
