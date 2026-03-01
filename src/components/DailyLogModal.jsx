@@ -2,14 +2,14 @@ import { useState, useEffect } from 'react'
 import { submitDailyLog, fetchTodayEntry } from '../utils/dailyLog'
 
 const CLOSER_FIELDS = [
-  { key: 'SelfGen', label: 'Self-Gen', step: 1 },
-  { key: 'Others', label: 'Others', step: 1 },
-  { key: 'Sits', label: 'Sits', step: 1 },
+  { key: 'VentasSelfGen', label: 'Ventas Self-Gen', step: 1 },
+  { key: 'VentasOthers', label: 'Ventas Others', step: 1 },
   { key: 'CitasPropias', label: 'Citas Propias', step: 1 },
-  { key: 'VisitasPropias', label: 'Visitas Propias', step: 1 },
-  { key: 'Aplicaron', label: 'Aplicaron', step: 1 },
-  { key: 'Aprobados', label: 'Aprobados', step: 1 },
-  { key: 'Negados', label: 'Negados', step: 1 },
+  { key: 'VisitasPropias', label: 'Visitas Propias (Sits)', step: 1 },
+  { key: 'AplicaronPropias', label: 'Aplicaron Propias', step: 1 },
+  { key: 'AplicaronOthers', label: 'Aplicaron Others', step: 1 },
+  { key: 'AprobadosPropias', label: 'Aprobados Propias', step: 1 },
+  { key: 'AprobadosOthers', label: 'Aprobados Others', step: 1 },
   { key: 'Cancelaciones', label: 'Cancelaciones', step: 1 },
 ]
 
@@ -26,14 +26,14 @@ const SETTER_FIELDS = [
 
 // Map daily log field keys to the person object keys for MTD context
 const MTD_MAP_CLOSER = {
-  SelfGen: 'selfGen',
-  Others: 'callCenter',
-  Sits: 'sits',
+  VentasSelfGen: 'selfGen',
+  VentasOthers: 'callCenter',
   CitasPropias: 'citasPropias',
   VisitasPropias: 'visitasPropias',
-  Aplicaron: 'aplicaron',
-  Aprobados: 'aprobados',
-  Negados: 'negados',
+  AplicaronPropias: 'aplicaron',
+  AplicaronOthers: 'aplicaron',
+  AprobadosPropias: 'aprobados',
+  AprobadosOthers: 'aprobados',
   Cancelaciones: 'cancels',
 }
 
@@ -62,11 +62,11 @@ function formatDateLabel(dateStr) {
 function getWarnings(fields, values, personType) {
   const w = []
   if (personType === 'closer') {
-    if (values.Aprobados + values.Negados > values.Aplicaron && values.Aplicaron > 0) {
-      w.push('Aprobados + Negados es mayor que Aplicaron')
+    if (values.AprobadosPropias > values.AplicaronPropias && values.AplicaronPropias > 0) {
+      w.push('Aprobados Propias es mayor que Aplicaron Propias')
     }
-    if (values.Sits > values.VisitasPropias && values.VisitasPropias > 0) {
-      w.push('Sits es mayor que Visitas Propias')
+    if (values.AprobadosOthers > values.AplicaronOthers && values.AplicaronOthers > 0) {
+      w.push('Aprobados Others es mayor que Aplicaron Others')
     }
   } else {
     if (values.Aprobados + values.Negados > values.Aplicaron && values.Aplicaron > 0) {
