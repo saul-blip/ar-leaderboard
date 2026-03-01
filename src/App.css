@@ -215,28 +215,44 @@ body {
 }
 
 .history-table {
-  width: 100%;
+  width: auto;
   border-collapse: collapse;
   font-size: 13px;
+}
+
+.history-table th:first-child,
+.history-table td:first-child {
+  width: 1%;
+  white-space: nowrap;
+  padding-right: 16px;
 }
 
 .history-table th {
   background: var(--surface);
   color: var(--text2);
-  padding: 6px 8px;
-  text-align: left;
+  padding: 5px 6px;
+  text-align: center;
   font-size: 11px;
   text-transform: uppercase;
-  letter-spacing: 1px;
+  letter-spacing: 0.5px;
   border-bottom: 1px solid var(--border);
   white-space: nowrap;
 }
 
+.history-table th:first-child {
+  text-align: left;
+}
+
 .history-table td {
-  padding: 6px 8px;
+  padding: 5px 6px;
   border-bottom: 1px solid rgba(42, 42, 90, 0.5);
   color: var(--text);
   white-space: nowrap;
+  text-align: center;
+}
+
+.history-table td:first-child {
+  text-align: left;
 }
 
 .history-table tr:hover td {
@@ -247,6 +263,21 @@ body {
   font-family: var(--font-display);
   font-size: 16px;
   letter-spacing: 1px;
+}
+.history-ventas {
+  line-height: 1.1;
+}
+.ventas-total {
+  display: block;
+}
+.ventas-breakdown {
+  display: block;
+  font-family: ui-monospace, 'SF Mono', 'Menlo', 'Monaco', 'Consolas', monospace;
+  font-size: 10px;
+  color: #666;
+  letter-spacing: 0.3px;
+  margin-top: 2px;
+  line-height: 1.4;
 }
 
 @keyframes pulse {

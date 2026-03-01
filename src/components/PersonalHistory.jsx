@@ -67,19 +67,18 @@ export default function PersonalHistory({ personName, personType, onClose }) {
                 <>
                   <th>Citas</th>
                   <th>Visitas</th>
-                  <th>Aplicaron</th>
+                  <th>Aplic.</th>
                   <th>Aprob.</th>
-                  <th>SG</th>
-                  <th>Others</th>
-                  <th>Cancel</th>
+                  <th>💰 Ventas</th>
+                  <th>Canc.</th>
                 </>
               ) : (
                 <>
                   <th>Citas</th>
                   <th>Shows</th>
-                  <th>Aplicaron</th>
+                  <th>Aplic.</th>
                   <th>Aprob.</th>
-                  <th>Ventas</th>
+                  <th>💰 Ventas</th>
                 </>
               )}
             </tr>
@@ -94,8 +93,12 @@ export default function PersonalHistory({ personName, personType, onClose }) {
                     <td className="history-val">{data.visitasPropias}</td>
                     <td className="history-val">{data.aplicaron}</td>
                     <td className="history-val" style={{ color: effectivenessColor(data.aprobados ? (data.aprobados / (data.aplicaron || 1)) * 100 : 0) }}>{data.aprobados}</td>
-                    <td className="history-val">{data.selfGen}</td>
-                    <td className="history-val">{data.callCenter}</td>
+                    <td className="history-val history-ventas">
+                      <span className="ventas-total">{data.selfGen + data.callCenter}</span>
+                      {(data.selfGen > 0 || data.callCenter > 0) && (
+                        <span className="ventas-breakdown">{data.selfGen} self-gen<br/>{data.callCenter} others</span>
+                      )}
+                    </td>
                     <td className="history-val" style={{ color: data.cancels ? '#ff9800' : undefined }}>{data.cancels}</td>
                   </tr>
                 )

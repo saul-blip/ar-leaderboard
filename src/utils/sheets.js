@@ -228,8 +228,17 @@ export async function fetchPersonHistory(personName, personType) {
     })
   )
 
-  return results
+  const sorted = results
     .filter(r => r.status === 'fulfilled' && r.value !== null)
     .map(r => r.value)
-    .sort((a, b) => a.month.localeCompare(b.month))
+    .sort((a, b) => b.month.localeCompare(a.month))
+
+  // Deduplicate: skip older months whose metrics are identical to a newer one
+  const seen = new Set()
+  return sorted.filter(({ data }) => {
+    const key = JSON.stringify(data)
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
 }
