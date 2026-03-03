@@ -259,6 +259,27 @@ function syncAll() {
   const allKpis = mergeKpis(orlKpis, kssKpis);
   Logger.log('KPIs computed for ' + Object.keys(allKpis).length + ' people');
 
+  // 2b. Override shows with calendar-based data.
+  // Appointment date = authoritative month reference.
+  // A show = appointmentStatus "showed" with startTime in this month.
+  Logger.log('Fetching calendar appointment shows...');
+  const monthEnd = new Date(year, month + 1, 0, 23, 59, 59, 999).toISOString();
+  const orlCalShows = fetchCalendarShowsByUser(GDS.ORLANDO,   monthStart, monthEnd);
+  const kssCalShows = fetchCalendarShowsByUser(GDS.KISSIMMEE, monthStart, monthEnd);
+
+  // Reset pipeline-derived shows, then fill from calendar
+  for (var _sn in allKpis) allKpis[_sn].shows = 0;
+  [orlCalShows, kssCalShows].forEach(function(calShows) {
+    for (var name in calShows) {
+      if (!allKpis[name]) {
+        allKpis[name] = { leadsAsignados: 0, contactados: 0, citasAgendadas: 0,
+                          shows: 0, aplicaron: 0, aprobados: 0, negados: 0, ventas: 0 };
+      }
+      allKpis[name].shows += calShows[name];
+    }
+  });
+  Logger.log('Calendar shows merged into allKpis');
+
   // 3. Fetch Discord FLASH NEWS sale posts
   Logger.log('Fetching Discord FLASH NEWS posts...');
   const discordSales = parseDiscordSales(monthStart);
@@ -393,6 +414,74 @@ function mergeKpis(a, b) {
     }
   }
   return merged;
+}
+
+// ─── GHL Calendar: Fetch appointment shows by user ────────────
+// Returns { [personName]: showCount } based on the appointment's SCHEDULED DATE
+// and status "showed". This is the authoritative source for the Shows KPI —
+// not the pipeline stage, not createdAt, but the calendar appointment date.
+function fetchCalendarShowsByUser(locConfig, monthStartIso, monthEndIso) {
+  const shows   = {};
+  const baseUrl = 'https://services.leadconnectorhq.com/appointments/'
+                + '?locationId=' + locConfig.locationId
+                + '&startDate=' + encodeURIComponent(monthStartIso)
+                + '&endDate='   + encodeURIComponent(monthEndIso)
+                + '&limit=100';
+  let url = baseUrl;
+
+  while (url) {
+    try {
+      const res = UrlFetchApp.fetch(url, {
+        method: 'GET',
+        headers: {
+          'Authorization': 'Bearer ' + locConfig.pit,
+          'Version':       '2021-07-28',
+        },
+        muteHttpExceptions: true,
+      });
+
+      const code = res.getResponseCode();
+      if (code === 429 || code === 503) {
+        Logger.log('Calendar API rate limit (' + code + ') — waiting 10s');
+        Utilities.sleep(10000);
+        continue;
+      }
+      if (code !== 200) {
+        Logger.log('Calendar API ' + code + ': ' + res.getContentText().slice(0, 300));
+        break;
+      }
+
+      const data  = JSON.parse(res.getContentText());
+      const appts = data.appointments || data.items || [];
+
+      for (const appt of appts) {
+        // Accept both field name variants across GHL API versions
+        const status = appt.appointmentStatus || appt.status || '';
+        if (status !== 'showed') continue;
+
+        const userId = appt.assignedUserId || appt.userId || '';
+        if (!userId) continue;
+
+        const name = GHL_ID_TO_NAME[userId];
+        if (!name) {
+          Logger.log('Calendar: unknown userId=' + userId + ' in appt=' + appt.id);
+          continue;
+        }
+
+        shows[name] = (shows[name] || 0) + 1;
+      }
+
+      url = (data.meta && data.meta.nextPageUrl) ? data.meta.nextPageUrl : null;
+      if (url) Utilities.sleep(300);
+
+    } catch (err) {
+      Logger.log('Calendar shows fetch error: ' + err.message);
+      break;
+    }
+  }
+
+  Logger.log('Calendar shows [' + locConfig.locationId + ']: ' + JSON.stringify(shows));
+  return shows;
 }
 
 // ─── Discord: Parse FLASH NEWS sale posts ─────────────────────
@@ -653,6 +742,35 @@ function debugDiscordRaw() {
       Logger.log('  *** FLASH found in content (no embed)');
     }
   }
+}
+
+// ─── DEBUG: Test Calendar Appointments API ────────────────────
+// Run this manually to verify the /appointments/ endpoint works and
+// check the field names in the response (appointmentStatus, assignedUserId, etc.)
+function debugCalendarShows() {
+  const now        = new Date();
+  const year       = now.getFullYear();
+  const month      = now.getMonth();
+  const monthStart = new Date(year, month, 1).toISOString();
+  const monthEnd   = new Date(year, month + 1, 0, 23, 59, 59, 999).toISOString();
+
+  Logger.log('Testing Calendar API for ORL: ' + monthStart + ' → ' + monthEnd);
+  const url = 'https://services.leadconnectorhq.com/appointments/'
+            + '?locationId=' + GDS.ORLANDO.locationId
+            + '&startDate=' + encodeURIComponent(monthStart)
+            + '&endDate='   + encodeURIComponent(monthEnd)
+            + '&limit=5';
+
+  const res = UrlFetchApp.fetch(url, {
+    method: 'GET',
+    headers: {
+      'Authorization': 'Bearer ' + GDS.ORLANDO.pit,
+      'Version': '2021-07-28',
+    },
+    muteHttpExceptions: true,
+  });
+  Logger.log('HTTP: ' + res.getResponseCode());
+  Logger.log('Body: ' + res.getContentText().slice(0, 2000));
 }
 
 // ─── DEBUG: Dump raw GHL Kissimmee API response ───────────────
