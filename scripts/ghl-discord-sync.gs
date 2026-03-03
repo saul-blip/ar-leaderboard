@@ -264,6 +264,23 @@ function syncAll() {
   const discordSales = parseDiscordSales(monthStart);
   Logger.log('Discord sales parsed for ' + Object.keys(discordSales).length + ' people');
 
+  // 3b. Merge setter ventas from Discord into GHL KPIs.
+  // When a FLASH NEWS post credits a setter (first mention before the closer),
+  // parseDiscordSales() captures it as role='setter', others=N.
+  // But writeCloserVentas() skips non-closers, so setter ventas would be lost.
+  // We inject them here so writeSetterKPIs() writes the correct Ventas count.
+  for (var _n in discordSales) {
+    var _s = discordSales[_n];
+    if (_s.role === 'setter' && _s.others > 0) {
+      if (!allKpis[_n]) {
+        allKpis[_n] = { leadsAsignados: 0, contactados: 0, citasAgendadas: 0,
+                        shows: 0, aplicaron: 0, aprobados: 0, negados: 0, ventas: 0 };
+      }
+      allKpis[_n].ventas = (allKpis[_n].ventas || 0) + _s.others;
+    }
+  }
+  Logger.log('Setter Discord ventas merged into allKpis');
+
   // 4. Write to sheets
   writeSetterKPIs(ss, monthKey, allKpis);
   writeCloserVentas(ss, monthKey, discordSales);
