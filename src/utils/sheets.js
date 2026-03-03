@@ -82,6 +82,7 @@ function parseCloser(row, id) {
     photo: row.Foto || '',
     selfGen: safeNum(row.SelfGen),
     callCenter: safeNum(row.CallCenter),
+    walkIn: safeNum(row.WalkIn),
     sits: safeNum(row.Sits),
     citasPropias: safeNum(row.CitasPropias),
     visitasPropias: safeNum(row.VisitasPropias),

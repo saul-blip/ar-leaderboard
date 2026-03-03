@@ -287,17 +287,17 @@ function syncAll() {
 
   // 3b. Merge setter ventas from Discord into GHL KPIs.
   // When a FLASH NEWS post credits a setter (first mention before the closer),
-  // parseDiscordSales() captures it as role='setter', others=N.
+  // parseDiscordSales() captures it as role='setter', callCenter=N.
   // But writeCloserVentas() skips non-closers, so setter ventas would be lost.
   // We inject them here so writeSetterKPIs() writes the correct Ventas count.
   for (var _n in discordSales) {
     var _s = discordSales[_n];
-    if (_s.role === 'setter' && _s.others > 0) {
+    if (_s.role === 'setter' && _s.callCenter > 0) {
       if (!allKpis[_n]) {
         allKpis[_n] = { leadsAsignados: 0, contactados: 0, citasAgendadas: 0,
                         shows: 0, aplicaron: 0, aprobados: 0, negados: 0, ventas: 0 };
       }
-      allKpis[_n].ventas = (allKpis[_n].ventas || 0) + _s.others;
+      allKpis[_n].ventas = (allKpis[_n].ventas || 0) + _s.callCenter;
     }
   }
   Logger.log('Setter Discord ventas merged into allKpis');
@@ -485,7 +485,7 @@ function fetchCalendarShowsByUser(locConfig, monthStartIso, monthEndIso) {
 }
 
 // ─── Discord: Parse FLASH NEWS sale posts ─────────────────────
-// Returns { [personName]: { role: 'closer'|'setter', selfGen: N, others: N } }
+// Returns { [personName]: { role: 'closer'|'setter', selfGen: N, callCenter: N, walkIn: N } }
 function parseDiscordSales(monthStart) {
   const sales        = {};
   const monthStartMs = new Date(monthStart).getTime();
@@ -536,9 +536,10 @@ function parseDiscordSales(monthStart) {
           [mentions[0], mentions[1]].forEach(function(id) {
             const name = DISCORD_ID_TO_NAME[id];
             if (name) {
-              if (!sales[name]) sales[name] = { role: 'closer', selfGen: 0, others: 0 };
-              if (saleType === 'selfGen') sales[name].selfGen += 0.5;
-              else                        sales[name].others  += 0.5;
+              if (!sales[name]) sales[name] = { role: 'closer', selfGen: 0, callCenter: 0, walkIn: 0 };
+              if (saleType === 'selfGen')       sales[name].selfGen    += 0.5;
+              else if (saleType === 'walkIn')   sales[name].walkIn     += 0.5;
+              else                              sales[name].callCenter += 0.5;
             } else {
               Logger.log('Unknown Discord closer ID in split sale: ' + id + ' — add to DISCORD_ID_TO_NAME');
             }
@@ -556,17 +557,18 @@ function parseDiscordSales(monthStart) {
 
           // Credit the closer
           if (closerName) {
-            if (!sales[closerName]) sales[closerName] = { role: 'closer', selfGen: 0, others: 0 };
-            if (saleType === 'selfGen') sales[closerName].selfGen++;
-            else                        sales[closerName].others++;
+            if (!sales[closerName]) sales[closerName] = { role: 'closer', selfGen: 0, callCenter: 0, walkIn: 0 };
+            if (saleType === 'selfGen')       sales[closerName].selfGen++;
+            else if (saleType === 'walkIn')   sales[closerName].walkIn++;
+            else                              sales[closerName].callCenter++;
           } else if (closerDiscordId) {
             Logger.log('Unknown Discord closer ID: ' + closerDiscordId + ' — add to DISCORD_ID_TO_NAME');
           }
 
           // Credit the setter (ventas count)
           if (setterName) {
-            if (!sales[setterName]) sales[setterName] = { role: 'setter', selfGen: 0, others: 0 };
-            sales[setterName].others++; // setter "ventas" tracked separately in GHL
+            if (!sales[setterName]) sales[setterName] = { role: 'setter', selfGen: 0, callCenter: 0, walkIn: 0 };
+            sales[setterName].callCenter++; // setter "ventas" = call center production
           } else if (setterDiscordId) {
             Logger.log('Unknown Discord setter ID: ' + setterDiscordId + ' — add to DISCORD_ID_TO_NAME');
           }
@@ -591,18 +593,21 @@ function parseDiscordSales(monthStart) {
   return sales;
 }
 
-// ─── Classify sale as Self-Gen or Others ──────────────────────
-// Rule: if there's a setter → always Others
-//       Walk-in / Fb Ads / Facebook / Call Center → Others
-//       Source contains "self" (any variation) and no setter → Self-Gen
+// ─── Classify sale source ──────────────────────────────────────
+// Returns: 'selfGen' | 'callCenter' | 'walkIn'
+// Rules:
+//   setter present      → callCenter (setter-assisted = call center lead)
+//   source has "walk"   → walkIn
+//   source has "self"   → selfGen
+//   fb / call / default → callCenter (inbound digital or phone lead)
 function classifySale(source, hasSetter) {
-  if (hasSetter) return 'others';
+  if (hasSetter) return 'callCenter';
   const s = (source || '').toLowerCase();
-  if (s.includes('walk'))                          return 'others';
-  if (s.includes('fb') || s.includes('facebook')) return 'others';
-  if (s.includes('call'))                          return 'others';
+  if (s.includes('walk'))                          return 'walkIn';
   if (s.includes('self'))                          return 'selfGen';
-  return 'others'; // Default to others if source is unclear
+  if (s.includes('fb') || s.includes('facebook')) return 'callCenter';
+  if (s.includes('call'))                          return 'callCenter';
+  return 'callCenter'; // Default: assume inbound/call-center lead
 }
 
 // ─── Write Setter KPIs to Setters_YYYY-MM tab ─────────────────
@@ -650,8 +655,8 @@ function writeSetterKPIs(ss, monthKey, allKpis) {
 }
 
 // ─── Write Closer Ventas to Closers_YYYY-MM tab ───────────────
-// Columns: Nombre(A) PIN(B) Foto(C) SelfGen(D) CallCenter(E) ...
-// Only updates D (SelfGen) and E (CallCenter/Others) from Discord data
+// Columns: Nombre(A) PIN(B) Foto(C) SelfGen(D) CallCenter(E) WalkIn(F) Sits(G) ...
+// Only updates D (SelfGen), E (CallCenter), F (WalkIn) from Discord data
 function writeCloserVentas(ss, monthKey, discordSales) {
   const tabName = 'Closers_' + monthKey;
   const sheet   = ss.getSheetByName(tabName);
@@ -659,6 +664,9 @@ function writeCloserVentas(ss, monthKey, discordSales) {
     Logger.log('Tab not found: ' + tabName + ' — skipping closer write');
     return;
   }
+
+  // Ensure WalkIn column (F=6) exists between CallCenter and Sits
+  ensureWalkInColumn(sheet);
 
   const data    = sheet.getDataRange().getValues();
   const today   = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd');
@@ -672,13 +680,28 @@ function writeCloserVentas(ss, monthKey, discordSales) {
     if (!sale || sale.role !== 'closer') continue;
 
     const row = i + 1;
-    sheet.getRange(row, 4).setValue(sale.selfGen); // D = SelfGen
-    sheet.getRange(row, 5).setValue(sale.others);  // E = CallCenter / Others
-    sheet.getRange(row, 13).setValue(today);        // M = UltimaActividad
+    sheet.getRange(row, 4).setValue(sale.selfGen);    // D = SelfGen
+    sheet.getRange(row, 5).setValue(sale.callCenter); // E = CallCenter
+    sheet.getRange(row, 6).setValue(sale.walkIn);     // F = WalkIn
+    sheet.getRange(row, 14).setValue(today);           // N = UltimaActividad
     written++;
   }
 
   Logger.log('Closer ventas written for ' + written + ' people in ' + tabName);
+}
+
+// ─── Ensure WalkIn column exists at position F (col 6) ────────
+// Inserts a WalkIn column between CallCenter(E) and Sits if missing.
+// Safe to call on every sync — no-op if already present.
+function ensureWalkInColumn(sheet) {
+  const lastCol = sheet.getLastColumn();
+  if (lastCol < 6) return; // sheet too narrow, skip
+  const headerF = sheet.getRange(1, 6).getValue();
+  if (headerF === 'WalkIn') return; // already exists
+  // Insert column after E (col 5) and label it
+  sheet.insertColumnAfter(5);
+  sheet.getRange(1, 6).setValue('WalkIn');
+  Logger.log('Inserted WalkIn column at F in ' + sheet.getName());
 }
 
 // ─── TEST: Run manually to check output without writing ────────
@@ -707,7 +730,7 @@ function testSync_DryRun() {
   Logger.log('--- Discord FLASH NEWS ---');
   const sales = parseDiscordSales(monthStart);
   for (const [name, s] of Object.entries(sales)) {
-    Logger.log(name + ' [' + s.role + ']: selfGen=' + s.selfGen + ' others=' + s.others);
+    Logger.log(name + ' [' + s.role + ']: selfGen=' + s.selfGen + ' callCenter=' + s.callCenter + ' walkIn=' + s.walkIn);
   }
 }
 

@@ -4,16 +4,16 @@
 // Historical data (2026-02 and earlier) lives in the Google Sheets tabs and is NOT overridden here.
 
 export const defaultClosers = [
-  { id: 1,  name: 'Fabiola Iorio',      photo: '', pin: '1001', selfGen: 0, callCenter: 0, sits: 0, citasPropias: 0, visitasPropias: 0, aplicaron: 0, aprobados: 0, negados: 0, cancels: 0, ultimaActividad: '' },
-  { id: 2,  name: 'Laura Indriago',      photo: '', pin: '1002', selfGen: 0, callCenter: 0, sits: 0, citasPropias: 0, visitasPropias: 0, aplicaron: 0, aprobados: 0, negados: 0, cancels: 0, ultimaActividad: '' },
-  { id: 3,  name: 'Christopher Cepeda',  photo: '', pin: '1003', selfGen: 0, callCenter: 0, sits: 0, citasPropias: 0, visitasPropias: 0, aplicaron: 0, aprobados: 0, negados: 0, cancels: 0, ultimaActividad: '' },
-  { id: 4,  name: 'Juan Rodriguez',      photo: '', pin: '1004', selfGen: 0, callCenter: 0, sits: 0, citasPropias: 0, visitasPropias: 0, aplicaron: 0, aprobados: 0, negados: 0, cancels: 0, ultimaActividad: '' },
-  { id: 5,  name: 'Maria De Gouveia',    photo: '', pin: '1005', selfGen: 0, callCenter: 0, sits: 0, citasPropias: 0, visitasPropias: 0, aplicaron: 0, aprobados: 0, negados: 0, cancels: 0, ultimaActividad: '' },
-  { id: 6,  name: 'Fady Zahr Chacon',    photo: '', pin: '1006', selfGen: 0, callCenter: 0, sits: 0, citasPropias: 0, visitasPropias: 0, aplicaron: 0, aprobados: 0, negados: 0, cancels: 0, ultimaActividad: '' },
-  { id: 7,  name: 'Eleazar Hidalgo',     photo: '', pin: '1007', selfGen: 0, callCenter: 0, sits: 0, citasPropias: 0, visitasPropias: 0, aplicaron: 0, aprobados: 0, negados: 0, cancels: 0, ultimaActividad: '' },
-  { id: 8,  name: 'Miguel Reyes',        photo: '', pin: '1008', selfGen: 0, callCenter: 0, sits: 0, citasPropias: 0, visitasPropias: 0, aplicaron: 0, aprobados: 0, negados: 0, cancels: 0, ultimaActividad: '' },
-  { id: 9,  name: 'Giovanni Martinez',   photo: '', pin: '1009', selfGen: 0, callCenter: 0, sits: 0, citasPropias: 0, visitasPropias: 0, aplicaron: 0, aprobados: 0, negados: 0, cancels: 0, ultimaActividad: '' },
-  { id: 10, name: 'Nickol Montero',      photo: '', pin: '1010', selfGen: 0, callCenter: 0, sits: 0, citasPropias: 0, visitasPropias: 0, aplicaron: 0, aprobados: 0, negados: 0, cancels: 0, ultimaActividad: '' },
+  { id: 1,  name: 'Fabiola Iorio',      photo: '', pin: '1001', selfGen: 0, callCenter: 0, walkIn: 0, sits: 0, citasPropias: 0, visitasPropias: 0, aplicaron: 0, aprobados: 0, negados: 0, cancels: 0, ultimaActividad: '' },
+  { id: 2,  name: 'Laura Indriago',      photo: '', pin: '1002', selfGen: 0, callCenter: 0, walkIn: 0, sits: 0, citasPropias: 0, visitasPropias: 0, aplicaron: 0, aprobados: 0, negados: 0, cancels: 0, ultimaActividad: '' },
+  { id: 3,  name: 'Christopher Cepeda',  photo: '', pin: '1003', selfGen: 0, callCenter: 0, walkIn: 0, sits: 0, citasPropias: 0, visitasPropias: 0, aplicaron: 0, aprobados: 0, negados: 0, cancels: 0, ultimaActividad: '' },
+  { id: 4,  name: 'Juan Rodriguez',      photo: '', pin: '1004', selfGen: 0, callCenter: 0, walkIn: 0, sits: 0, citasPropias: 0, visitasPropias: 0, aplicaron: 0, aprobados: 0, negados: 0, cancels: 0, ultimaActividad: '' },
+  { id: 5,  name: 'Maria De Gouveia',    photo: '', pin: '1005', selfGen: 0, callCenter: 0, walkIn: 0, sits: 0, citasPropias: 0, visitasPropias: 0, aplicaron: 0, aprobados: 0, negados: 0, cancels: 0, ultimaActividad: '' },
+  { id: 6,  name: 'Fady Zahr Chacon',    photo: '', pin: '1006', selfGen: 0, callCenter: 0, walkIn: 0, sits: 0, citasPropias: 0, visitasPropias: 0, aplicaron: 0, aprobados: 0, negados: 0, cancels: 0, ultimaActividad: '' },
+  { id: 7,  name: 'Eleazar Hidalgo',     photo: '', pin: '1007', selfGen: 0, callCenter: 0, walkIn: 0, sits: 0, citasPropias: 0, visitasPropias: 0, aplicaron: 0, aprobados: 0, negados: 0, cancels: 0, ultimaActividad: '' },
+  { id: 8,  name: 'Miguel Reyes',        photo: '', pin: '1008', selfGen: 0, callCenter: 0, walkIn: 0, sits: 0, citasPropias: 0, visitasPropias: 0, aplicaron: 0, aprobados: 0, negados: 0, cancels: 0, ultimaActividad: '' },
+  { id: 9,  name: 'Giovanni Martinez',   photo: '', pin: '1009', selfGen: 0, callCenter: 0, walkIn: 0, sits: 0, citasPropias: 0, visitasPropias: 0, aplicaron: 0, aprobados: 0, negados: 0, cancels: 0, ultimaActividad: '' },
+  { id: 10, name: 'Nickol Montero',      photo: '', pin: '1010', selfGen: 0, callCenter: 0, walkIn: 0, sits: 0, citasPropias: 0, visitasPropias: 0, aplicaron: 0, aprobados: 0, negados: 0, cancels: 0, ultimaActividad: '' },
 ]
 
 export const defaultSetters = [

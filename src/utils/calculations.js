@@ -4,7 +4,7 @@ export function pct(num, den) {
 }
 
 export function closerSales(c) {
-  return c.selfGen + c.callCenter
+  return c.selfGen + c.callCenter + (c.walkIn || 0)
 }
 
 export function closerEffectiveness(c) {

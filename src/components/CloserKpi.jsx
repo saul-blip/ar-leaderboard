@@ -47,7 +47,8 @@ export default function CloserKpi({ person, onClose, accessInfo }) {
           <div className="kpi-grid">
             <Stat label="Total" value={sales} color="#e94560" />
             <Stat label="Self-Gen" value={person.selfGen} />
-            <Stat label="Others" value={person.callCenter} />
+            <Stat label="Call Center" value={person.callCenter} />
+            <Stat label="Walk-In" value={person.walkIn} />
           </div>
         </div>
 
