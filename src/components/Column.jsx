@@ -17,7 +17,7 @@ export default function Column({ type, data, onSelect }) {
   const avgEff = isCloser ? avgCloserEffectiveness(data) : avgSetterLeadToCita(data)
 
   const getSales = isCloser ? closerSales : (s) => s.ventas
-  const getDenominator = isCloser ? (c) => c.sits : (s) => s.leadsAsignados
+  const getDenominator = isCloser ? (c) => c.sits : (s) => s.shows
   const getEffectiveness = isCloser ? closerEffectiveness : setterLeadToCita
 
   const totalDen = isCloser
