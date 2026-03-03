@@ -1093,7 +1093,7 @@ body {
   border: 1px solid var(--border);
   border-radius: 20px;
   padding: 28px;
-  width: 420px;
+  width: 480px;
   max-height: 90vh;
   overflow-y: auto;
   position: relative;
@@ -1165,21 +1165,47 @@ body {
 .daily-log-fields {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
   margin-bottom: 16px;
 }
 
-.daily-log-field {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+/* Column headers row */
+.daily-log-fields-header {
+  display: grid;
+  grid-template-columns: 1fr 80px 56px;
   gap: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 2px;
+}
+
+.daily-log-col-label {
+  font-size: 10px;
+  color: var(--text2);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  text-align: center;
+}
+
+.daily-log-col-crm-header {
+  color: var(--info);
+}
+
+/* Field row: 3-column grid */
+.daily-log-field {
+  display: grid;
+  grid-template-columns: 1fr 80px 56px;
+  align-items: center;
+  gap: 8px;
+}
+
+.daily-log-field--exceeded .daily-log-field-label {
+  color: var(--bad);
 }
 
 .daily-log-field-label {
   font-size: 13px;
   color: var(--text);
-  min-width: 120px;
 }
 
 .daily-log-field-input-wrap {
@@ -1192,7 +1218,7 @@ body {
   background: var(--bg);
   border: 1px solid var(--border);
   color: var(--text);
-  padding: 8px 10px;
+  padding: 8px 6px;
   border-radius: 6px;
   font-family: var(--font-display);
   font-size: 18px;
@@ -1205,8 +1231,64 @@ body {
 
 .daily-log-field-input:focus { border-color: var(--closers); }
 
+.daily-log-field-input.crm-exceeded {
+  border-color: var(--bad);
+  color: var(--bad);
+  background: rgba(255, 82, 82, 0.08);
+}
+
+/* CRM reference column */
+.daily-log-field-crm {
+  text-align: center;
+  font-family: var(--font-display);
+  font-size: 16px;
+  letter-spacing: 1px;
+  color: var(--info);
+  background: rgba(84, 160, 255, 0.08);
+  border: 1px solid rgba(84, 160, 255, 0.2);
+  border-radius: 6px;
+  padding: 6px 4px;
+}
+
+.daily-log-field-crm--exceeded {
+  color: var(--bad);
+  background: rgba(255, 82, 82, 0.08);
+  border-color: rgba(255, 82, 82, 0.3);
+}
+
 .daily-log-field-mtd {
   font-size: 11px;
+  color: var(--text2);
+  white-space: nowrap;
+}
+
+/* CRM blocking error banner */
+.daily-log-crm-block {
+  background: rgba(255, 82, 82, 0.08);
+  border: 1px solid rgba(255, 82, 82, 0.4);
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 14px;
+  font-size: 12px;
+}
+
+.daily-log-crm-block-title {
+  color: var(--bad);
+  font-weight: 700;
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+
+.daily-log-crm-block-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 3px 0;
+  color: var(--text);
+  gap: 8px;
+}
+
+.daily-log-crm-block-field {
   color: var(--text2);
   white-space: nowrap;
 }

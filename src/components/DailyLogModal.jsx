@@ -24,7 +24,7 @@ const SETTER_FIELDS = [
   { key: 'Negados', label: 'Negados', step: 1 },
 ]
 
-// Map daily log field keys to the person object keys for MTD context
+// Map daily log field keys to the person object keys for CRM reference
 const MTD_MAP_CLOSER = {
   VentasSelfGen: 'selfGen',
   VentasOthers: 'callCenter',
@@ -46,6 +46,23 @@ const MTD_MAP_SETTER = {
   Aplicaron: 'aplicaron',
   Aprobados: 'aprobados',
   Negados: 'negados',
+}
+
+// Human-readable labels for CRM violation messages
+const CRM_FIELD_LABELS = {
+  selfGen: 'Ventas Self-Gen',
+  callCenter: 'Ventas Others',
+  citasPropias: 'Citas Propias',
+  visitasPropias: 'Visitas Propias',
+  aplicaron: 'Aplicaron',
+  aprobados: 'Aprobados',
+  cancels: 'Cancelaciones',
+  leadsAsignados: 'Leads Asignados',
+  contactados: 'Contactados',
+  citasAgendadas: 'Citas Agendadas',
+  shows: 'Shows',
+  ventas: 'Ventas',
+  negados: 'Negados',
 }
 
 function todayStr() {
@@ -82,6 +99,39 @@ function getWarnings(fields, values, personType) {
   return w
 }
 
+/**
+ * CRM Validation: today's values must not exceed the CRM (GHL-synced) totals.
+ * Fields sharing the same mtdMap key (e.g. AplicaronPropias + AplicaronOthers → aplicaron)
+ * are grouped and their sum is checked against the single CRM value.
+ */
+function getCRMViolations(fields, values, mtdMap, crmPerson) {
+  if (!crmPerson) return []
+
+  // Group fields by their mtdMap key and sum their today values
+  const groups = {}
+  fields.forEach(f => {
+    const k = mtdMap[f.key]
+    if (!k) return
+    if (!groups[k]) groups[k] = { fieldKeys: [], total: 0 }
+    groups[k].fieldKeys.push(f.key)
+    groups[k].total += (values[f.key] || 0)
+  })
+
+  const violations = []
+  Object.entries(groups).forEach(([mtdKey, g]) => {
+    const crmVal = crmPerson[mtdKey]
+    if (crmVal != null && crmVal !== '' && g.total > Number(crmVal)) {
+      violations.push({
+        mtdKey,
+        fieldKeys: g.fieldKeys,
+        entered: g.total,
+        crm: Number(crmVal),
+      })
+    }
+  })
+  return violations
+}
+
 export default function DailyLogModal({ personName, personType, personPin, personData, dailyLogUrl, onClose, onSuccess, adminPin, closers, setters }) {
   const isAdmin = !!adminPin
   const [selectedPerson, setSelectedPerson] = useState(
@@ -98,12 +148,16 @@ export default function DailyLogModal({ personName, personType, personPin, perso
   const fields = activeType === 'closer' ? CLOSER_FIELDS : SETTER_FIELDS
   const mtdMap = activeType === 'closer' ? MTD_MAP_CLOSER : MTD_MAP_SETTER
 
-  // Find the MTD data for the selected person
-  const mtdPerson = selectedPerson
+  // Find the CRM reference data for the selected person (GHL-synced values from sheet)
+  const crmPerson = selectedPerson
     ? (activeType === 'closer'
         ? (closers || []).find(c => c.name === selectedPerson.name)
         : (setters || []).find(s => s.name === selectedPerson.name))
     : personData
+
+  // CRM violation check: today's entry must not exceed GHL-synced totals
+  const crmViolations = getCRMViolations(fields, values, mtdMap, crmPerson)
+  const exceededKeys = new Set(crmViolations.flatMap(v => v.fieldKeys))
 
   // Initialize values when person is selected
   useEffect(() => {
@@ -320,29 +374,50 @@ export default function DailyLogModal({ personName, personType, personPin, perso
         {loadingToday ? (
           <div className="daily-log-loading">Cargando datos del dia...</div>
         ) : (
-          <div className="daily-log-fields">
-            {fields.map(f => {
-              const mtdVal = mtdPerson ? mtdPerson[mtdMap[f.key]] : null
-              return (
-                <div key={f.key} className="daily-log-field">
-                  <label className="daily-log-field-label">{f.label}</label>
-                  <div className="daily-log-field-input-wrap">
+          <>
+            <div className="daily-log-fields">
+              {/* Column headers */}
+              <div className="daily-log-fields-header">
+                <span></span>
+                <span className="daily-log-col-label">Hoy</span>
+                <span className="daily-log-col-label daily-log-col-crm-header">CRM</span>
+              </div>
+
+              {fields.map(f => {
+                const crmVal = crmPerson ? crmPerson[mtdMap[f.key]] : null
+                const isExceeded = exceededKeys.has(f.key)
+                return (
+                  <div key={f.key} className={`daily-log-field${isExceeded ? ' daily-log-field--exceeded' : ''}`}>
+                    <label className="daily-log-field-label">{f.label}</label>
                     <input
                       type="number"
                       min="0"
                       step={f.step}
                       value={values[f.key] || 0}
                       onChange={e => updateValue(f.key, parseFloat(e.target.value) || 0)}
-                      className="daily-log-field-input"
+                      className={`daily-log-field-input${isExceeded ? ' crm-exceeded' : ''}`}
                     />
-                    {mtdVal !== null && mtdVal !== undefined && (
-                      <span className="daily-log-field-mtd">MTD: {mtdVal}</span>
-                    )}
+                    <div className={`daily-log-field-crm${isExceeded ? ' daily-log-field-crm--exceeded' : ''}`}>
+                      {crmVal !== null && crmVal !== undefined ? crmVal : '—'}
+                    </div>
                   </div>
-                </div>
-              )
-            })}
-          </div>
+                )
+              })}
+            </div>
+
+            {/* CRM blocking error */}
+            {crmViolations.length > 0 && (
+              <div className="daily-log-crm-block">
+                <div className="daily-log-crm-block-title">⛔ Actualiza el CRM antes de continuar</div>
+                {crmViolations.map((v, i) => (
+                  <div key={i} className="daily-log-crm-block-item">
+                    <span className="daily-log-crm-block-field">{CRM_FIELD_LABELS[v.mtdKey] || v.mtdKey}</span>
+                    <span>ingresaste <strong>{v.entered}</strong>, CRM muestra <strong>{v.crm}</strong></span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
         )}
 
         {warnings.length > 0 && (
@@ -353,7 +428,11 @@ export default function DailyLogModal({ personName, personType, personPin, perso
           </div>
         )}
 
-        <button className="daily-log-btn" onClick={handleConfirm} disabled={loadingToday}>
+        <button
+          className="daily-log-btn"
+          onClick={handleConfirm}
+          disabled={loadingToday || crmViolations.length > 0}
+        >
           Revisar y Confirmar
         </button>
       </div>
