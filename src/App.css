@@ -344,6 +344,15 @@ body {
   margin-top: 2px;
 }
 
+.global-stat-pace {
+  display: block;
+  font-size: 11px;
+  color: #00e676;
+  letter-spacing: 0.5px;
+  margin-top: 4px;
+  font-weight: 600;
+}
+
 .closers-accent { color: var(--closers); }
 .setters-accent { color: var(--setters); }
 

@@ -99,7 +99,8 @@ function parseSetter(row, id) {
     name: row.Nombre || '',
     pin: row.PIN || '',
     photo: row.Foto || '',
-    leadsAsignados: safeNum(row.LeadsAsignados),
+    leadsNuevos: safeNum(row.LeadsAsignados),    // hot leads created this month, assigned via rotation
+    leadsAsignados: safeNum(row.LeadsAsignados), // same source, kept for secondary display
     contactados: safeNum(row.Contactados),
     citasAgendadas: safeNum(row.CitasAgendadas),
     shows: safeNum(row.Shows),

@@ -12,7 +12,7 @@ export default function SetterKpi({ person, onClose, accessInfo }) {
   const approval = setterApprovalRate(person)
 
   const funnelSteps = [
-    { label: 'Leads Asignados', value: person.leadsAsignados, color: '#74b9ff' },
+    { label: 'Leads Nuevos', value: person.leadsNuevos, color: '#74b9ff' },
     { label: 'Contactados', value: person.contactados, color: '#54a0ff' },
     { label: 'Citas Agendadas', value: person.citasAgendadas, color: '#f5a623' },
     { label: 'Shows', value: person.shows, color: '#e94560' },
@@ -44,7 +44,7 @@ export default function SetterKpi({ person, onClose, accessInfo }) {
         <div className="kpi-section">
           <h3>Volumen</h3>
           <div className="kpi-grid">
-            <Stat label="Leads Asignados" value={person.leadsAsignados} />
+            <Stat label="Leads Nuevos" value={person.leadsNuevos} />
             <Stat label="Contactados" value={person.contactados} />
             <Stat label="Ventas" value={person.ventas} color="#e94560" />
           </div>
@@ -75,6 +75,15 @@ export default function SetterKpi({ person, onClose, accessInfo }) {
             <Stat label="Aprobación" value={`${approval}%`} color={effectivenessColor(approval)} />
           </div>
         </div>
+
+        <details className="kpi-section kpi-secondary">
+          <summary style={{ cursor: 'pointer', color: 'var(--text2)', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '1px' }}>
+            Datos adicionales
+          </summary>
+          <div className="kpi-grid" style={{ marginTop: '10px' }}>
+            <Stat label="Leads Asignados" value={person.leadsAsignados} />
+          </div>
+        </details>
 
         <FunnelChart steps={funnelSteps} />
 

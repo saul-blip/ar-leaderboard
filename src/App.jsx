@@ -182,7 +182,7 @@ export default function App() {
         />
       )}
 
-      <StatsBar closers={closers} setters={setters} />
+      <StatsBar closers={closers} setters={setters} accessInfo={accessInfo} isCurrentMonth={isCurrentMonth} />
 
       {loading ? (
         <div className="loading-state">Cargando datos...</div>

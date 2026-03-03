@@ -20,7 +20,7 @@ export function closerApprovalRate(c) {
 }
 
 export function setterLeadToCita(s) {
-  return pct(s.citasAgendadas, s.leadsAsignados)
+  return pct(s.citasAgendadas, s.leadsNuevos ?? s.leadsAsignados)
 }
 
 export function setterShowRate(s) {
@@ -55,8 +55,17 @@ export function avgCloserEffectiveness(closers) {
 
 export function avgSetterLeadToCita(setters) {
   const totalCitas = setters.reduce((s, st) => s + st.citasAgendadas, 0)
-  const totalLeads = setters.reduce((s, st) => s + st.leadsAsignados, 0)
+  const totalLeads = setters.reduce((s, st) => s + (st.leadsNuevos ?? st.leadsAsignados), 0)
   return pct(totalCitas, totalLeads)
+}
+
+export function totalCallCenterSales(closers) {
+  return closers.reduce((s, c) => s + c.callCenter, 0)
+}
+
+export function paceProjection(current, dayOfMonth, daysInMonth) {
+  if (!dayOfMonth || !current) return 0
+  return Math.round((current / dayOfMonth) * daysInMonth)
 }
 
 export function effectivenessColor(val) {
