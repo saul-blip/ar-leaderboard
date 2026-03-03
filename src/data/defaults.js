@@ -9,6 +9,7 @@ export const defaultClosers = [
   { id: 7, name: 'Eleazar Hidalgo', photo: '', pin: '1007', selfGen: 0, callCenter: 2, sits: 15, citasPropias: 16, visitasPropias: 14, aplicaron: 15, aprobados: 2, negados: 13, cancels: 0, ultimaActividad: '2026-02-27' },
   { id: 8, name: 'Miguel Reyes', photo: '', pin: '1008', selfGen: 0, callCenter: 0, sits: 4, citasPropias: 4, visitasPropias: 5, aplicaron: 4, aprobados: 0, negados: 0, cancels: 0, ultimaActividad: '2026-02-23' },
   { id: 9, name: 'Giovanni Martinez', photo: '', pin: '1009', selfGen: 0, callCenter: 0, sits: 2, citasPropias: 7, visitasPropias: 4, aplicaron: 2, aprobados: 0, negados: 2, cancels: 0, ultimaActividad: '2026-02-27' },
+  { id: 10, name: 'Nickol Montero', photo: '', pin: '1010', selfGen: 0, callCenter: 0, sits: 0, citasPropias: 0, visitasPropias: 0, aplicaron: 0, aprobados: 0, negados: 0, cancels: 0, ultimaActividad: '' },
 ]
 
 export const defaultSetters = [

@@ -199,6 +199,7 @@ const CLOSER_PINS = {
   'Eleazar Hidalgo': '1007',
   'Miguel Reyes': '1008',
   'Giovanni Martinez': '1009',
+  'Nickol Montero': '1010',
 }
 
 const SETTER_PINS = {

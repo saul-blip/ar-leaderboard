@@ -164,6 +164,18 @@ const GDS = {
   }
 };
 
+// ─── Discord IDs that are CLOSERS (vs setters) ───────────────
+// Used to detect split sales when two closers share credit (0.5 each)
+const CLOSER_DISCORD_IDS = new Set([
+  '1467943892744671253', // Fabiola Iorio
+  '1467999772756672664', // Laura Indriago
+  '1467914775685238991', // María De Gouveia
+  '1470907780406841396', // Eleazar Hidalgo
+  '1467921519035547832', // Christopher Cepeda
+  '1467917024335368315', // Juan Rodriguez
+  '1475551043629875505', // Nickol Montero
+]);
+
 // ─── Discord user ID → Leaderboard name ──────────────────────
 // Add more entries here as people post in FLASH NEWS
 const DISCORD_ID_TO_NAME = {
@@ -407,30 +419,51 @@ function parseDiscordSales(monthStart) {
           mentions.push(m[1]);
         }
 
-        const hasSetter      = mentions.length >= 2;
-        const setterDiscordId = hasSetter ? mentions[0] : null;
-        const closerDiscordId = hasSetter ? mentions[1] : (mentions[0] || null);
+        // Detect split sale: two closers sharing credit (0.5 each)
+        const bothClosers = mentions.length >= 2
+          && CLOSER_DISCORD_IDS.has(mentions[0])
+          && CLOSER_DISCORD_IDS.has(mentions[1]);
 
-        const closerName = closerDiscordId ? DISCORD_ID_TO_NAME[closerDiscordId] : null;
-        const setterName = setterDiscordId ? DISCORD_ID_TO_NAME[setterDiscordId] : null;
+        if (bothClosers) {
+          // Split sale: both get 0.5 credit
+          const saleType = classifySale(source, false);
+          [mentions[0], mentions[1]].forEach(function(id) {
+            const name = DISCORD_ID_TO_NAME[id];
+            if (name) {
+              if (!sales[name]) sales[name] = { role: 'closer', selfGen: 0, others: 0 };
+              if (saleType === 'selfGen') sales[name].selfGen += 0.5;
+              else                        sales[name].others  += 0.5;
+            } else {
+              Logger.log('Unknown Discord closer ID in split sale: ' + id + ' — add to DISCORD_ID_TO_NAME');
+            }
+          });
+        } else {
+          // Standard sale: first mention = setter (optional), second (or only) = closer
+          const hasSetter       = mentions.length >= 2;
+          const setterDiscordId = hasSetter ? mentions[0] : null;
+          const closerDiscordId = hasSetter ? mentions[1] : (mentions[0] || null);
 
-        const saleType = classifySale(source, hasSetter);
+          const closerName = closerDiscordId ? DISCORD_ID_TO_NAME[closerDiscordId] : null;
+          const setterName = setterDiscordId ? DISCORD_ID_TO_NAME[setterDiscordId] : null;
 
-        // Credit the closer
-        if (closerName) {
-          if (!sales[closerName]) sales[closerName] = { role: 'closer', selfGen: 0, others: 0 };
-          if (saleType === 'selfGen') sales[closerName].selfGen++;
-          else                        sales[closerName].others++;
-        } else if (closerDiscordId) {
-          Logger.log('Unknown Discord closer ID: ' + closerDiscordId + ' — add to DISCORD_ID_TO_NAME');
-        }
+          const saleType = classifySale(source, hasSetter);
 
-        // Credit the setter (ventas count)
-        if (setterName) {
-          if (!sales[setterName]) sales[setterName] = { role: 'setter', selfGen: 0, others: 0 };
-          sales[setterName].others++; // setter "ventas" tracked separately in GHL
-        } else if (setterDiscordId) {
-          Logger.log('Unknown Discord setter ID: ' + setterDiscordId + ' — add to DISCORD_ID_TO_NAME');
+          // Credit the closer
+          if (closerName) {
+            if (!sales[closerName]) sales[closerName] = { role: 'closer', selfGen: 0, others: 0 };
+            if (saleType === 'selfGen') sales[closerName].selfGen++;
+            else                        sales[closerName].others++;
+          } else if (closerDiscordId) {
+            Logger.log('Unknown Discord closer ID: ' + closerDiscordId + ' — add to DISCORD_ID_TO_NAME');
+          }
+
+          // Credit the setter (ventas count)
+          if (setterName) {
+            if (!sales[setterName]) sales[setterName] = { role: 'setter', selfGen: 0, others: 0 };
+            sales[setterName].others++; // setter "ventas" tracked separately in GHL
+          } else if (setterDiscordId) {
+            Logger.log('Unknown Discord setter ID: ' + setterDiscordId + ' — add to DISCORD_ID_TO_NAME');
+          }
         }
       }
 
