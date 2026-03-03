@@ -581,19 +581,19 @@ function parseDiscordSales(monthStart) {
 
 // ─── Classify sale source ──────────────────────────────────────
 // Returns: 'selfGen' | 'callCenter' | 'walkIn'
-// Rules:
-//   setter present      → callCenter (setter-assisted = call center lead)
-//   source has "walk"   → walkIn
-//   source has "self"   → selfGen
-//   fb / call / default → callCenter (inbound digital or phone lead)
+//
+// There are exactly THREE sale sources:
+//   Walk-In     → customer physically walked in (source contains "walk")
+//   Call Center → a setter/call-center rep booked the appointment (hasSetter=true)
+//   SelfGen     → everything else; closer generated/closed the deal on their own
+//
+// Order matters: check walk-in first (hasSetter is irrelevant for walk-ins),
+// then setter presence, then default to selfGen.
 function classifySale(source, hasSetter) {
-  if (hasSetter) return 'callCenter';
   const s = (source || '').toLowerCase();
-  if (s.includes('walk'))                          return 'walkIn';
-  if (s.includes('self'))                          return 'selfGen';
-  if (s.includes('fb') || s.includes('facebook')) return 'callCenter';
-  if (s.includes('call'))                          return 'callCenter';
-  return 'callCenter'; // Default: assume inbound/call-center lead
+  if (s.includes('walk')) return 'walkIn';     // Physical walk-in
+  if (hasSetter)          return 'callCenter'; // Setter booked it → call center
+  return 'selfGen';                            // No setter, not walk-in → self-gen
 }
 
 // ─── Write Setter KPIs to Setters_YYYY-MM tab ─────────────────
