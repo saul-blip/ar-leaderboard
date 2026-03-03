@@ -259,26 +259,12 @@ function syncAll() {
   const allKpis = mergeKpis(orlKpis, kssKpis);
   Logger.log('KPIs computed for ' + Object.keys(allKpis).length + ' people');
 
-  // 2b. Override shows with calendar-based data.
-  // Appointment date = authoritative month reference.
-  // A show = appointmentStatus "showed" with startTime in this month.
-  Logger.log('Fetching calendar appointment shows...');
-  const monthEnd = new Date(year, month + 1, 0, 23, 59, 59, 999).toISOString();
-  const orlCalShows = fetchCalendarShowsByUser(GDS.ORLANDO,   monthStart, monthEnd);
-  const kssCalShows = fetchCalendarShowsByUser(GDS.KISSIMMEE, monthStart, monthEnd);
-
-  // Reset pipeline-derived shows, then fill from calendar
-  for (var _sn in allKpis) allKpis[_sn].shows = 0;
-  [orlCalShows, kssCalShows].forEach(function(calShows) {
-    for (var name in calShows) {
-      if (!allKpis[name]) {
-        allKpis[name] = { leadsAsignados: 0, contactados: 0, citasAgendadas: 0,
-                          shows: 0, aplicaron: 0, aprobados: 0, negados: 0, ventas: 0 };
-      }
-      allKpis[name].shows += calShows[name];
-    }
-  });
-  Logger.log('Calendar shows merged into allKpis');
+  // NOTE: Shows come from the pipeline's showSet stages (10-13 = "Asistio ...").
+  // Calendar appointments (/appointments/) are assigned to the CLOSER who meets the
+  // customer — NOT the setter who booked the lead — so they cannot be used to attribute
+  // shows to setters. Pipeline opportunities ARE assigned to the setter, making the
+  // pipeline-stage approach the authoritative source for setter shows.
+  Logger.log('Shows sourced from pipeline stages (showSet) for all setters.');
 
   // 3. Fetch Discord FLASH NEWS sale posts
   Logger.log('Fetching Discord FLASH NEWS posts...');
