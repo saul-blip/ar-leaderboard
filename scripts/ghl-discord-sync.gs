@@ -32,6 +32,39 @@ function getSecrets() {
   };
 }
 
+// ─── Make.com proxy URL (bypasses GCP Discord IP block) ───────
+// Make scenario: Webhooks → HTTP (Discord) → Webhook Response
+// Apps Script POSTs {"auth":"Bot TOKEN","url":"DISCORD_URL"} here.
+const MAKE_PROXY_URL = 'https://hook.us2.make.com/wid5i6oqw3l13pnau2gn2ffi4lhpnd7u';
+
+/**
+ * Fetch Discord messages via Make.com proxy.
+ * @param {string} discordUrl  Full Discord API URL (with limit + optional before=)
+ * @returns {Array|null}       Parsed JSON array of messages, or null on error
+ */
+function fetchDiscordMessages(discordUrl) {
+  const secrets = getSecrets();
+  const body    = JSON.stringify({ auth: 'Bot ' + secrets.discordToken, url: discordUrl });
+  const res     = UrlFetchApp.fetch(MAKE_PROXY_URL, {
+    method:          'post',
+    contentType:     'application/json',
+    payload:         body,
+    muteHttpExceptions: true,
+  });
+  const code = res.getResponseCode();
+  if (code !== 200) {
+    Logger.log('Make proxy HTTP ' + code + ': ' + res.getContentText().slice(0, 300));
+    return null;
+  }
+  const text = res.getContentText();
+  try {
+    return JSON.parse(text);
+  } catch (e) {
+    Logger.log('Make proxy parse error: ' + text.slice(0, 300));
+    return null;
+  }
+}
+
 const GDS = {
   SHEET_ID: '16LaMfxt2SLhYyBTKpHOthvxupr-fT2v5TiOBbtDaUls',
 
@@ -246,21 +279,28 @@ function fetchAllGHLOpps(locConfig, monthStart) {
         muteHttpExceptions: true,
       });
 
+      // Retry on rate-limit (429) or bandwidth quota errors
+      const code = res.getResponseCode();
+      if (code === 429 || code === 503) {
+        Logger.log('GHL rate limit / quota (' + code + ') — waiting 10s then retrying');
+        Utilities.sleep(10000);
+        continue; // retry same url
+      }
+
       const data = JSON.parse(res.getContentText());
       const opps = data.opportunities || [];
       if (opps.length === 0) break;
 
-      let hitOld = false;
+      // NOTE: GHL sorts by lastStatusChangeAt desc, not createdAt.
+      // Do NOT break early — collect all pages and filter by createdAt client-side.
       for (const opp of opps) {
-        if (new Date(opp.createdAt).getTime() < monthStartMs) {
-          hitOld = true;
-          break;
+        if (new Date(opp.createdAt).getTime() >= monthStartMs) {
+          allOpps.push(opp);
         }
-        allOpps.push(opp);
       }
 
-      url = (!hitOld && data.meta && data.meta.nextPageUrl) ? data.meta.nextPageUrl : null;
-      if (url) Utilities.sleep(250); // gentle rate limit
+      url = (data.meta && data.meta.nextPageUrl) ? data.meta.nextPageUrl : null;
+      if (url) Utilities.sleep(500); // gentle rate limit (0.5s between pages)
 
     } catch (err) {
       Logger.log('GHL fetch error: ' + err.message);
@@ -331,20 +371,16 @@ function mergeKpis(a, b) {
 function parseDiscordSales(monthStart) {
   const sales        = {};
   const monthStartMs = new Date(monthStart).getTime();
-  let   url          = 'https://discord.com/api/v10/channels/'
+  const baseUrl      = 'https://discord.com/api/v10/channels/'
                      + GDS.DISCORD_CHANNEL + '/messages?limit=100';
+  let   fetchUrl     = baseUrl;
   let   done         = false;
 
   while (!done) {
     try {
-      const secrets  = getSecrets();
-      const res      = UrlFetchApp.fetch(url, {
-        headers: { 'Authorization': 'Bot ' + secrets.discordToken },
-        muteHttpExceptions: true,
-      });
-      const messages = JSON.parse(res.getContentText());
+      const messages = fetchDiscordMessages(fetchUrl);
 
-      if (!Array.isArray(messages) || messages.length === 0) break;
+      if (!messages || !Array.isArray(messages) || messages.length === 0) break;
 
       for (const msg of messages) {
         // Stop if we've gone past the start of the month
@@ -401,8 +437,7 @@ function parseDiscordSales(monthStart) {
       // Paginate using Discord's before= cursor
       if (!done && messages.length === 100) {
         const lastId = messages[messages.length - 1].id;
-        url = 'https://discord.com/api/v10/channels/'
-            + GDS.DISCORD_CHANNEL + '/messages?limit=100&before=' + lastId;
+        fetchUrl = baseUrl + '&before=' + lastId;
         Utilities.sleep(500);
       } else {
         done = true;
@@ -528,4 +563,60 @@ function testSync_DryRun() {
   for (const [name, s] of Object.entries(sales)) {
     Logger.log(name + ' [' + s.role + ']: selfGen=' + s.selfGen + ' others=' + s.others);
   }
+}
+
+// ─── DEBUG: Dump raw Discord message structure ────────────────
+// Run this manually to see exactly what FLASH NEWS posts look like.
+// Check Execution Log → look for "MSG #..." entries.
+function debugDiscordRaw() {
+  const url  = 'https://discord.com/api/v10/channels/'
+             + GDS.DISCORD_CHANNEL + '/messages?limit=20';
+  const msgs = fetchDiscordMessages(url);
+  if (!msgs || !Array.isArray(msgs)) {
+    Logger.log('ERROR: fetchDiscordMessages returned null or non-array');
+    return;
+  }
+  Logger.log('Fetched ' + msgs.length + ' messages from #general');
+  for (let i = 0; i < msgs.length; i++) {
+    const m = msgs[i];
+    Logger.log('─── MSG #' + i + ' id=' + m.id + ' ts=' + m.timestamp + ' author=' + (m.author && m.author.username));
+    Logger.log('  content: ' + JSON.stringify(m.content || '').slice(0, 200));
+    const embeds = m.embeds || [];
+    Logger.log('  embeds count: ' + embeds.length);
+    for (let j = 0; j < embeds.length; j++) {
+      const e = embeds[j];
+      Logger.log('  embed[' + j + '] title: ' + JSON.stringify(e.title));
+      Logger.log('  embed[' + j + '] description: ' + JSON.stringify((e.description || '').slice(0, 300)));
+      Logger.log('  embed[' + j + '] fields: ' + JSON.stringify((e.fields || []).map(f => ({name: f.name, value: (f.value||'').slice(0,100)}))));
+      Logger.log('  embed[' + j + '] author: ' + JSON.stringify(e.author));
+      Logger.log('  embed[' + j + '] footer: ' + JSON.stringify(e.footer));
+      Logger.log('  embed[' + j + '] color: ' + e.color);
+    }
+    if (embeds.length === 0 && (m.content || '').toLowerCase().includes('flash')) {
+      Logger.log('  *** FLASH found in content (no embed)');
+    }
+  }
+}
+
+// ─── DEBUG: Dump raw GHL Kissimmee API response ───────────────
+// Run this manually to see what the Kissimmee API actually returns.
+function debugGHLKissimmee() {
+  const secrets = getSecrets();
+  Logger.log('KSS PIT token present: ' + !!secrets.pitKissimmee);
+  Logger.log('KSS PIT first 8 chars: ' + (secrets.pitKissimmee || '').slice(0, 8));
+
+  const url = 'https://services.leadconnectorhq.com/opportunities/search'
+            + '?location_id=' + GDS.KISSIMMEE.locationId
+            + '&pipeline_id=' + GDS.KISSIMMEE.pipelineId
+            + '&limit=5';
+  const res = UrlFetchApp.fetch(url, {
+    method: 'GET',
+    headers: {
+      'Authorization': 'Bearer ' + secrets.pitKissimmee,
+      'Version': '2021-07-28',
+    },
+    muteHttpExceptions: true,
+  });
+  Logger.log('HTTP status: ' + res.getResponseCode());
+  Logger.log('Response body (first 1000 chars): ' + res.getContentText().slice(0, 1000));
 }
