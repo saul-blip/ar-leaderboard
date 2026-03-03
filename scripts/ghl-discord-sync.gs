@@ -259,12 +259,27 @@ function syncAll() {
   const allKpis = mergeKpis(orlKpis, kssKpis);
   Logger.log('KPIs computed for ' + Object.keys(allKpis).length + ' people');
 
-  // NOTE: Shows come from the pipeline's showSet stages (10-13 = "Asistio ...").
-  // Calendar appointments (/appointments/) are assigned to the CLOSER who meets the
-  // customer — NOT the setter who booked the lead — so they cannot be used to attribute
-  // shows to setters. Pipeline opportunities ARE assigned to the setter, making the
-  // pipeline-stage approach the authoritative source for setter shows.
-  Logger.log('Shows sourced from pipeline stages (showSet) for all setters.');
+  // NOTE (Setters): Shows come from the pipeline's showSet stages (10-13 = "Asistio ...").
+  // Pipeline opportunities ARE assigned to the setter, so this correctly attributes shows.
+  Logger.log('Setter shows sourced from pipeline stages (showSet).');
+
+  // 2b. Fetch calendar sits for CLOSERS.
+  // Calendar appointments ARE assigned to the closer who hosts the customer meeting,
+  // so fetchCalendarShowsByUser() correctly returns sits per closer.
+  // "Sits" = appointments where the customer showed up (appointmentStatus = "showed").
+  Logger.log('Fetching calendar sits for closers...');
+  const monthEnd     = new Date(year, month + 1, 0, 23, 59, 59, 999).toISOString();
+  const orlCalSits   = fetchCalendarShowsByUser(GDS.ORLANDO,   monthStart, monthEnd);
+  const kssCalSits   = fetchCalendarShowsByUser(GDS.KISSIMMEE, monthStart, monthEnd);
+
+  // Combine both locations into one {closerName: sitCount} map
+  const closerCalSits = {};
+  [orlCalSits, kssCalSits].forEach(function(calMap) {
+    for (var nm in calMap) {
+      closerCalSits[nm] = (closerCalSits[nm] || 0) + calMap[nm];
+    }
+  });
+  Logger.log('Closer calendar sits: ' + JSON.stringify(closerCalSits));
 
   // 3. Fetch Discord FLASH NEWS sale posts
   Logger.log('Fetching Discord FLASH NEWS posts...');
@@ -290,7 +305,7 @@ function syncAll() {
 
   // 4. Write to sheets
   writeSetterKPIs(ss, monthKey, allKpis);
-  writeCloserVentas(ss, monthKey, discordSales);
+  writeCloserVentas(ss, monthKey, discordSales, closerCalSits);
 
   Logger.log('=== Sync complete ===');
 }
@@ -640,10 +655,11 @@ function writeSetterKPIs(ss, monthKey, allKpis) {
   Logger.log('Setter KPIs written for ' + written + ' people in ' + tabName);
 }
 
-// ─── Write Closer Ventas to Closers_YYYY-MM tab ───────────────
+// ─── Write Closer Ventas + Sits to Closers_YYYY-MM tab ────────
 // Columns: Nombre(A) PIN(B) Foto(C) SelfGen(D) CallCenter(E) WalkIn(F) Sits(G) ...
-// Only updates D (SelfGen), E (CallCenter), F (WalkIn) from Discord data
-function writeCloserVentas(ss, monthKey, discordSales) {
+// Updates D-F from Discord FLASH NEWS, G (Sits) from GHL calendar, N = UltimaActividad.
+// Sits are written for ALL closers in the sheet (even those with 0 sales this month).
+function writeCloserVentas(ss, monthKey, discordSales, closerCalSits) {
   const tabName = 'Closers_' + monthKey;
   const sheet   = ss.getSheetByName(tabName);
   if (!sheet) {
@@ -654,26 +670,33 @@ function writeCloserVentas(ss, monthKey, discordSales) {
   // Ensure WalkIn column (F=6) exists between CallCenter and Sits
   ensureWalkInColumn(sheet);
 
-  const data    = sheet.getDataRange().getValues();
-  const today   = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd');
-  let   written = 0;
+  const data       = sheet.getDataRange().getValues();
+  const calSitsMap = closerCalSits || {};
+  const today      = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd');
+  let   written    = 0;
 
   for (let i = 1; i < data.length; i++) {
     const name = String(data[i][0]).trim();
     if (!name) continue;
 
+    const row  = i + 1;
     const sale = discordSales[name];
-    if (!sale || sale.role !== 'closer') continue;
 
-    const row = i + 1;
-    sheet.getRange(row, 4).setValue(sale.selfGen);    // D = SelfGen
-    sheet.getRange(row, 5).setValue(sale.callCenter); // E = CallCenter
-    sheet.getRange(row, 6).setValue(sale.walkIn);     // F = WalkIn
-    sheet.getRange(row, 14).setValue(today);           // N = UltimaActividad
-    written++;
+    // Ventas breakdown (Discord) — only for closers with Flash News sales this month
+    if (sale && sale.role === 'closer') {
+      sheet.getRange(row, 4).setValue(sale.selfGen);    // D = SelfGen
+      sheet.getRange(row, 5).setValue(sale.callCenter); // E = CallCenter
+      sheet.getRange(row, 6).setValue(sale.walkIn);     // F = WalkIn
+      sheet.getRange(row, 14).setValue(today);           // N = UltimaActividad
+      written++;
+    }
+
+    // Calendar sits — written for ALL closers in the sheet.
+    // If the calendar returned 0 for this closer, they had no shows this month.
+    sheet.getRange(row, 7).setValue(calSitsMap[name] || 0); // G = Sits
   }
 
-  Logger.log('Closer ventas written for ' + written + ' people in ' + tabName);
+  Logger.log('Closer ventas written for ' + written + ' people; sits updated for all rows in ' + tabName);
 }
 
 // ─── Ensure WalkIn column exists at position F (col 6) ────────
