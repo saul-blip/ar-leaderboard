@@ -516,10 +516,17 @@ function writeSetterKPIs(ss, monthKey, allKpis) {
 
   for (let i = 1; i < data.length; i++) {
     const name = String(data[i][0]).trim();
-    if (!name || !allKpis[name]) continue;
+    if (!name) continue;
 
-    const k   = allKpis[name];
     const row = i + 1;
+
+    if (!allKpis[name]) {
+      // Person not found in GHL this month — zero out to prevent stale data from prior months
+      sheet.getRange(row, 4, 1, 8).setValues([[0, 0, 0, 0, 0, 0, 0, 0]]);
+      continue;
+    }
+
+    const k = allKpis[name];
 
     sheet.getRange(row, 4).setValue(k.leadsAsignados);
     sheet.getRange(row, 5).setValue(k.contactados);
