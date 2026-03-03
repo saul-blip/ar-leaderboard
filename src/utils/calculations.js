@@ -63,6 +63,40 @@ export function totalCallCenterSales(closers) {
   return closers.reduce((s, c) => s + c.callCenter, 0)
 }
 
+export function totalSelfGenSales(closers) {
+  return closers.reduce((s, c) => s + (c.selfGen || 0), 0)
+}
+
+export function totalWalkInSales(closers) {
+  return closers.reduce((s, c) => s + (c.walkIn || 0), 0)
+}
+
+// Location map for closers (ORL = Orlando, KSS = Kissimmee)
+export const CLOSER_LOCATION = {
+  'Fabiola Iorio':      'ORL',
+  'Laura Indriago':     'ORL',
+  'María De Gouveia':   'ORL',
+  'Eleazar Hidalgo':    'ORL',
+  'Christopher Cepeda': 'KSS',
+  'Juan Rodriguez':     'KSS',
+  'Nickol Montero':     'KSS',
+}
+
+// Returns { ORL: {selfGen, callCenter, walkIn}, KSS: {selfGen, callCenter, walkIn} }
+export function salesByLocation(closers) {
+  const r = {
+    ORL: { selfGen: 0, callCenter: 0, walkIn: 0 },
+    KSS: { selfGen: 0, callCenter: 0, walkIn: 0 },
+  }
+  for (const c of closers) {
+    const loc = CLOSER_LOCATION[c.name] || 'ORL'
+    r[loc].selfGen    += c.selfGen    || 0
+    r[loc].callCenter += c.callCenter || 0
+    r[loc].walkIn     += c.walkIn     || 0
+  }
+  return r
+}
+
 export function paceProjection(current, dayOfMonth, daysInMonth) {
   if (!dayOfMonth || !current) return 0
   return Math.round((current / dayOfMonth) * daysInMonth)

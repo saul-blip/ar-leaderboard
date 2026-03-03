@@ -353,6 +353,14 @@ body {
   font-weight: 600;
 }
 
+.global-stat-loc {
+  display: block;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.45);
+  letter-spacing: 0.5px;
+  margin-top: 3px;
+}
+
 .closers-accent { color: var(--closers); }
 .setters-accent { color: var(--setters); }
 
