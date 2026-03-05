@@ -244,3 +244,74 @@ export async function fetchPersonHistory(personName, personType) {
     return true
   })
 }
+
+/**
+ * Fetch CRM data from serverless functions (GHL-first approach)
+ * Falls back to Google Sheets if serverless APIs are unavailable
+ */
+
+async function fetchCRMSetterData() {
+  try {
+    const response = await fetch('/api/ghl/setters')
+    if (!response.ok) throw new Error(`HTTP ${response.status}`)
+    const data = await response.json()
+    return data.setters || {}
+  } catch (error) {
+    console.warn('CRM setter fetch failed, falling back to Google Sheets:', error.message)
+    return null
+  }
+}
+
+async function fetchCRMCloserSits() {
+  try {
+    const response = await fetch('/api/ghl/closers-sits')
+    if (!response.ok) throw new Error(`HTTP ${response.status}`)
+    const data = await response.json()
+    return data.closers || {}
+  } catch (error) {
+    console.warn('CRM closer sits fetch failed, falling back to Google Sheets:', error.message)
+    return null
+  }
+}
+
+/**
+ * Merge CRM data with sheet data
+ * CRM data takes precedence, but we keep sheet data as fallback
+ */
+export async function fetchMonthDataWithCRM(monthKey) {
+  const sheetData = await fetchMonthData(monthKey)
+
+  // For current month, also try to fetch from CRM
+  if (monthKey === getCurrentMonth()) {
+    const [crmSetters, crmCloserSits] = await Promise.all([
+      fetchCRMSetterData(),
+      fetchCRMCloserSits(),
+    ])
+
+    // Merge CRM data into sheet data
+    if (crmSetters && sheetData.setters) {
+      for (const setter of sheetData.setters) {
+        const crmData = crmSetters[setter.name]
+        if (crmData) {
+          setter.leadsAsignados = crmData.leadsAsignados || setter.leadsAsignados
+          setter.leadsNuevos = crmData.leadsNuevos || setter.leadsNuevos
+          setter.contactados = crmData.contactados || setter.contactados
+          setter.citasAgendadas = crmData.citasAgendadas || setter.citasAgendadas
+          setter.shows = crmData.shows || setter.shows
+          // Ventas come from Discord, not CRM (handled separately)
+        }
+      }
+    }
+
+    if (crmCloserSits && sheetData.closers) {
+      for (const closer of sheetData.closers) {
+        const crmData = crmCloserSits[closer.name]
+        if (crmData !== undefined) {
+          closer.sits = crmData
+        }
+      }
+    }
+  }
+
+  return sheetData
+}

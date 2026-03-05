@@ -10,7 +10,7 @@ import DailyLogModal from './components/DailyLogModal'
 import ViewerGate from './components/ViewerGate'
 import MonthSelector from './components/MonthSelector'
 import { defaultClosers, defaultSetters, defaultViewerPin } from './data/defaults'
-import { fetchMonthData, fetchConfig, fetchAvailableMonths, getCurrentMonth } from './utils/sheets'
+import { fetchMonthData, fetchMonthDataWithCRM, fetchConfig, fetchAvailableMonths, getCurrentMonth } from './utils/sheets'
 
 const DEFAULT_ADMIN_PINS = {
   '1234': 'owner',
@@ -44,7 +44,10 @@ export default function App() {
   const loadData = useCallback(async (monthKey) => {
     setLoading(true)
     try {
-      const data = await fetchMonthData(monthKey)
+      // Use CRM-first approach for current month, fallback to Sheets for historical data
+      const data = monthKey === getCurrentMonth()
+        ? await fetchMonthDataWithCRM(monthKey)
+        : await fetchMonthData(monthKey)
       let loadedClosers = (data.closers && data.closers.length > 0) ? data.closers : (monthKey === getCurrentMonth() ? defaultClosers : [])
       let loadedSetters = (data.setters && data.setters.length > 0) ? data.setters : (monthKey === getCurrentMonth() ? defaultSetters : [])
 
