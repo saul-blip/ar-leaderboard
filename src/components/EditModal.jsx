@@ -1,51 +1,31 @@
 import { useState } from 'react'
+import { getCurrentMonth } from '../utils/sheets'
 
+// For now, only allow editing photos (other fields are auto-synced from GHL)
 const CLOSER_FIELDS = [
-  { key: 'name', label: 'Nombre', type: 'text' },
-  { key: 'pin', label: 'PIN', type: 'text' },
+  { key: 'name', label: 'Nombre', type: 'text', disabled: true },
+  { key: 'pin', label: 'PIN', type: 'text', disabled: true },
   { key: 'photo', label: 'URL Foto', type: 'text' },
-  { key: 'selfGen', label: 'Self-Gen', type: 'number' },
-  { key: 'callCenter', label: 'Others', type: 'number' },
-  { key: 'sits', label: 'Sits', type: 'number' },
-  { key: 'citasPropias', label: 'Citas Propias', type: 'number' },
-  { key: 'visitasPropias', label: 'Visitas Propias', type: 'number' },
-  { key: 'aplicaron', label: 'Aplicaron', type: 'number' },
-  { key: 'aprobados', label: 'Aprobados', type: 'number' },
-  { key: 'negados', label: 'Negados', type: 'number' },
-  { key: 'cancels', label: 'Cancel.', type: 'number' },
 ]
 
 const SETTER_FIELDS = [
-  { key: 'name', label: 'Nombre', type: 'text' },
-  { key: 'pin', label: 'PIN', type: 'text' },
+  { key: 'name', label: 'Nombre', type: 'text', disabled: true },
+  { key: 'pin', label: 'PIN', type: 'text', disabled: true },
   { key: 'photo', label: 'URL Foto', type: 'text' },
-  { key: 'leadsAsignados', label: 'Leads Asig.', type: 'number' },
-  { key: 'contactados', label: 'Contactados', type: 'number' },
-  { key: 'citasAgendadas', label: 'Citas Ag.', type: 'number' },
-  { key: 'shows', label: 'Shows', type: 'number' },
-  { key: 'ventas', label: 'Ventas', type: 'number' },
-  { key: 'aplicaron', label: 'Aplicaron', type: 'number' },
-  { key: 'aprobados', label: 'Aprobados', type: 'number' },
-  { key: 'negados', label: 'Negados', type: 'number' },
 ]
 
-function newCloser(id) {
-  return { id, name: '', pin: '', photo: '', selfGen: 0, callCenter: 0, sits: 0, citasPropias: 0, visitasPropias: 0, aplicaron: 0, aprobados: 0, negados: 0, cancels: 0 }
-}
-
-function newSetter(id) {
-  return { id, name: '', pin: '', photo: '', leadsAsignados: 0, contactados: 0, citasAgendadas: 0, shows: 0, ventas: 0, aplicaron: 0, aprobados: 0, negados: 0 }
-}
-
-export default function EditModal({ closers, setters, viewerPin, onSave, onClose, role }) {
+export default function EditModal({ closers, setters, viewerPin, onSave, onClose, role, adminPin, monthKey }) {
   const [tab, setTab] = useState('closers')
   const [editClosers, setEditClosers] = useState(JSON.parse(JSON.stringify(closers)))
   const [editSetters, setEditSetters] = useState(JSON.parse(JSON.stringify(setters)))
   const [editViewerPin, setEditViewerPin] = useState(viewerPin)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState(null)
 
   const data = tab === 'closers' ? editClosers : editSetters
   const setData = tab === 'closers' ? setEditClosers : setEditSetters
   const fields = tab === 'closers' ? CLOSER_FIELDS : SETTER_FIELDS
+  const currentMonth = monthKey || getCurrentMonth()
 
   const updateField = (idx, key, value) => {
     const copy = [...data]
@@ -53,19 +33,29 @@ export default function EditModal({ closers, setters, viewerPin, onSave, onClose
     setData(copy)
   }
 
-  const addPerson = () => {
-    const maxId = data.reduce((m, p) => Math.max(m, p.id), 0)
-    const person = tab === 'closers' ? newCloser(maxId + 1) : newSetter(maxId + 1)
-    setData([...data, person])
-  }
 
-  const removePerson = (idx) => {
-    setData(data.filter((_, i) => i !== idx))
-  }
+  const handleSave = async () => {
+    setSaving(true)
+    setError(null)
 
-  const handleSave = () => {
-    onSave(editClosers, editSetters, editViewerPin)
-    onClose()
+    try {
+      // Save photos to localStorage for persistence
+      const photosKey = `ar-leaderboard-photos-${currentMonth}`
+      const photoData = {
+        closers: editClosers.map(c => ({ name: c.name, photo: c.photo })),
+        setters: editSetters.map(s => ({ name: s.name, photo: s.photo })),
+      }
+      localStorage.setItem(photosKey, JSON.stringify(photoData))
+
+      // Update local state
+      onSave(editClosers, editSetters, editViewerPin)
+      onClose()
+    } catch (err) {
+      console.error('Save error:', err)
+      setError(err.message || 'Error saving photos')
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -98,13 +88,16 @@ export default function EditModal({ closers, setters, viewerPin, onSave, onClose
           </button>
         </div>
 
+        <div style={{ padding: '20px', fontSize: '12px', color: '#999' }}>
+          📷 Agrega o actualiza las fotos (URL). Los demás datos vienen automáticamente del CRM.
+        </div>
+
         <div className="edit-grid-wrap">
           <div className="edit-grid">
             <div className="edit-grid-header">
               {fields.map(f => (
                 <span key={f.key} className="edit-grid-th">{f.label}</span>
               ))}
-              <span className="edit-grid-th"></span>
             </div>
             {data.map((person, idx) => (
               <div key={person.id} className="edit-grid-row">
@@ -117,19 +110,26 @@ export default function EditModal({ closers, setters, viewerPin, onSave, onClose
                     className={`edit-input ${f.key === 'pin' ? 'edit-input-pin' : ''}`}
                     step={f.key === 'ventas' ? '0.5' : '1'}
                     maxLength={f.key === 'pin' ? 6 : undefined}
-                    placeholder={f.key === 'pin' ? '----' : ''}
+                    placeholder={f.key === 'pin' ? '----' : f.key === 'photo' ? 'https://...' : ''}
+                    disabled={f.disabled || saving}
                   />
                 ))}
-                <button className="edit-remove" onClick={() => removePerson(idx)}>✕</button>
               </div>
             ))}
           </div>
         </div>
 
         <div className="edit-actions">
-          <button className="edit-add" onClick={addPerson}>+ Agregar {tab === 'closers' ? 'Closer' : 'Setter'}</button>
-          <button className="edit-save" onClick={handleSave}>💾 Guardar</button>
+          <button className="edit-save" onClick={handleSave} disabled={saving} style={{ flex: 1 }}>
+            {saving ? '⏳ Guardando...' : '💾 Guardar Fotos'}
+          </button>
         </div>
+
+        {error && (
+          <div style={{ color: '#ff5252', textAlign: 'center', marginTop: '10px', fontSize: '12px' }}>
+            ❌ {error}
+          </div>
+        )}
       </div>
     </div>
   )

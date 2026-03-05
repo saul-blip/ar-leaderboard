@@ -45,20 +45,34 @@ export default function App() {
     setLoading(true)
     try {
       const data = await fetchMonthData(monthKey)
-      if (data.closers && data.closers.length > 0) {
-        setClosers(data.closers)
-      } else if (monthKey === getCurrentMonth()) {
-        setClosers(defaultClosers)
-      } else {
-        setClosers([])
+      let loadedClosers = (data.closers && data.closers.length > 0) ? data.closers : (monthKey === getCurrentMonth() ? defaultClosers : [])
+      let loadedSetters = (data.setters && data.setters.length > 0) ? data.setters : (monthKey === getCurrentMonth() ? defaultSetters : [])
+
+      // Load photos from localStorage
+      const photosKey = `ar-leaderboard-photos-${monthKey}`
+      const savedPhotos = localStorage.getItem(photosKey)
+      if (savedPhotos) {
+        try {
+          const { closers: closerPhotos, setters: setterPhotos } = JSON.parse(savedPhotos)
+          if (closerPhotos) {
+            loadedClosers = loadedClosers.map(c => {
+              const saved = closerPhotos.find(cp => cp.name === c.name)
+              return saved ? { ...c, photo: saved.photo } : c
+            })
+          }
+          if (setterPhotos) {
+            loadedSetters = loadedSetters.map(s => {
+              const saved = setterPhotos.find(sp => sp.name === s.name)
+              return saved ? { ...s, photo: saved.photo } : s
+            })
+          }
+        } catch (e) {
+          console.warn('Failed to parse saved photos:', e)
+        }
       }
-      if (data.setters && data.setters.length > 0) {
-        setSetters(data.setters)
-      } else if (monthKey === getCurrentMonth()) {
-        setSetters(defaultSetters)
-      } else {
-        setSetters([])
-      }
+
+      setClosers(loadedClosers)
+      setSetters(loadedSetters)
     } catch {
       if (monthKey === getCurrentMonth()) {
         setClosers(defaultClosers)
@@ -246,6 +260,8 @@ export default function App() {
           onSave={handleSave}
           onClose={() => setShowEdit(false)}
           role={authRole}
+          adminPin={adminPins[0] || '1234'}
+          monthKey={currentMonth}
         />
       )}
 
