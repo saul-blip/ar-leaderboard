@@ -1,3 +1,10 @@
 {
-  "rewrites": [{ "source": "/(.*)", "destination": "/" }]
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api/$1" },
+    { "source": "/(.*)", "destination": "/" }
+  ],
+  "functions": {
+    "api/ghl/setters.js": { "maxDuration": 60 },
+    "api/ghl/closers-sits.js": { "maxDuration": 30 }
+  }
 }

@@ -61,8 +61,8 @@ export async function fetchGHLPaginated(locationId, pit, endpoint, params = {}) 
       nextPageUrl = data.meta?.nextPageUrl || null;
       url = nextPageUrl;
 
-      // Gentle rate limiting between pages
-      if (url) await new Promise(resolve => setTimeout(resolve, 300));
+      // Small delay between pages to avoid rate limits
+      if (url) await new Promise(resolve => setTimeout(resolve, 50));
 
     } catch (error) {
       console.error(`GHL fetch error: ${error.message}`);
@@ -86,7 +86,10 @@ export async function fetchAllGHLOpportunities(locationId, pit, pipelineId, mont
   const allOpps = [];
 
   let nextPageUrl = null;
-  let url = `${GHL_API_BASE}/opportunities/search?location_id=${locationId}&pipeline_id=${pipelineId}&limit=100`;
+  // Add date filter server-side to drastically reduce pages fetched
+  const startTs = new Date(monthStart).getTime();
+  const endTs = Date.now();
+  let url = `${GHL_API_BASE}/opportunities/search?location_id=${locationId}&pipeline_id=${pipelineId}&limit=100&date=${monthStart.split('T')[0]}&endDate=${new Date(endTs).toISOString().split('T')[0]}`;
 
   while (url) {
     try {
@@ -123,7 +126,7 @@ export async function fetchAllGHLOpportunities(locationId, pit, pipelineId, mont
       }
 
       url = data.meta?.nextPageUrl || null;
-      if (url) await new Promise(resolve => setTimeout(resolve, 500));
+      if (url) await new Promise(resolve => setTimeout(resolve, 50));
 
     } catch (error) {
       console.error(`GHL opportunities fetch error: ${error.message}`);
@@ -175,7 +178,7 @@ export async function fetchCalendarAppointments(locationId, pit, monthStart, mon
       allAppts.push(...appts);
 
       url = data.meta?.nextPageUrl || null;
-      if (url) await new Promise(resolve => setTimeout(resolve, 300));
+      if (url) await new Promise(resolve => setTimeout(resolve, 50));
 
     } catch (error) {
       console.error(`GHL calendar fetch error: ${error.message}`);
