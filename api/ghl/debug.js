@@ -78,27 +78,46 @@ export default async function handler(req, res) {
     results.orl_contacts = { error: e.message };
   }
 
-  // Test 4: Calendars Orlando
+  // Test 4: Calendars KSS (various endpoint formats)
+  const now2 = new Date();
+  const calStart = new Date(now2.getFullYear(), now2.getMonth(), 1).toISOString();
+  const calEnd   = now2.toISOString();
+  const calStartMs = new Date(now2.getFullYear(), now2.getMonth(), 1).getTime();
+  const calEndMs   = now2.getTime();
+
+  // Try /calendars/events
   try {
-    const now = new Date();
-    const start = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-    const end   = now.toISOString();
-    const url = `${GHL_API_BASE}/appointments/?locationId=${ORLANDO_LOCATION}&startDate=${encodeURIComponent(start)}&endDate=${encodeURIComponent(end)}&limit=5`;
+    const url = `${GHL_API_BASE}/calendars/events?locationId=${KSS_LOCATION}&startTime=${calStartMs}&endTime=${calEndMs}&limit=5`;
     const r = await fetch(url, {
-      headers: {
-        'Authorization': `Bearer ${pitOrl}`,
-        'Version': GHL_API_VERSION,
-      }
+      headers: { 'Authorization': `Bearer ${pitKss}`, 'Version': GHL_API_VERSION }
     });
     const body = await r.text();
-    results.orl_calendars = {
-      status: r.status,
-      ok: r.ok,
-      body: body.slice(0, 300),
-    };
-  } catch(e) {
-    results.orl_calendars = { error: e.message };
-  }
+    results.kss_cal_events = { status: r.status, ok: r.ok, body: body.slice(0, 400) };
+  } catch(e) { results.kss_cal_events = { error: e.message }; }
+
+  // Try /appointments/ with camelCase
+  try {
+    const url = `${GHL_API_BASE}/appointments/?locationId=${KSS_LOCATION}&startDate=${encodeURIComponent(calStart)}&endDate=${encodeURIComponent(calEnd)}&limit=5`;
+    const r = await fetch(url, {
+      headers: { 'Authorization': `Bearer ${pitKss}`, 'Version': GHL_API_VERSION }
+    });
+    const body = await r.text();
+    results.kss_appointments = { status: r.status, ok: r.ok, body: body.slice(0, 400) };
+  } catch(e) { results.kss_appointments = { error: e.message }; }
+
+  // Get KSS opportunities full (to see real stage IDs)
+  try {
+    const url = `${GHL_API_BASE}/opportunities/search?location_id=${KSS_LOCATION}&pipeline_id=${KSS_PIPELINE}&limit=10`;
+    const r = await fetch(url, {
+      headers: { 'Authorization': `Bearer ${pitKss}`, 'Version': GHL_API_VERSION, 'Content-Type': 'application/json' }
+    });
+    const data = await r.json();
+    const stageCounts = {};
+    (data.opportunities || []).forEach(o => {
+      stageCounts[o.pipelineStageId] = (stageCounts[o.pipelineStageId] || 0) + 1;
+    });
+    results.kss_stage_ids = { status: r.status, stageCounts, total: data.meta?.total };
+  } catch(e) { results.kss_stage_ids = { error: e.message }; }
 
   res.setHeader('Content-Type', 'application/json');
   res.status(200).json({
