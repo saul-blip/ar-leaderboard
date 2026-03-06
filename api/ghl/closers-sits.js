@@ -2,10 +2,15 @@
  * /api/ghl/closers-sits
  * Fetch closer "sits" (showed appointments) from GHL calendar for the current month
  *
- * Returns: { closers: { [personName]: sitCount } }
+ * Uses /calendars/events?userId=xxx endpoint (confirmed working via debug tests).
+ * The /appointments/ endpoint returns 404; /calendars/events requires userId, calendarId, or groupId.
+ *
+ * Returns: { monthKey, timestamp, closers: { [personName]: sitCount } }
  */
 
-import { fetchCalendarAppointments, extractCalendarSits, mergeKPIs } from './utils.js';
+export const config = { maxDuration: 30 };
+
+import { fetchCalendarEventsByUserId } from './utils.js';
 import { GHL_CONFIG, GHL_ID_TO_NAME } from './config.js';
 
 function getCurrentMonth() {
@@ -15,13 +20,37 @@ function getCurrentMonth() {
   return `${y}-${m}`;
 }
 
-function getMonthRange() {
+function getMonthRangeMs() {
   const now = new Date();
   const year = now.getFullYear();
   const month = now.getMonth();
-  const start = new Date(year, month, 1).toISOString();
-  const end = new Date(year, month + 1, 0, 23, 59, 59, 999).toISOString();
-  return { start, end };
+  const startMs = new Date(year, month, 1).getTime();
+  const endMs = now.getTime();
+  return { startMs, endMs };
+}
+
+// Closer user IDs per location (must match GHL_ID_TO_NAME keys in config.js)
+const ORL_CLOSER_IDS = [
+  'Uv683v0pSIMCgPD91TOb', // Fabiola Iorio
+  'y75JjO6sSjq0nL5Xw6JF', // Laura Indriago
+  'QySpqRrxcWXr1YF0jyY3', // María De Gouveia
+  'hc2or5bP7DIJiII9FrYY', // Eleazar Hidalgo
+];
+
+const KSS_CLOSER_IDS = [
+  'LPtafFQB9QJg9t4YTw98', // Christopher Cepeda
+  '2OIjTh9wVWhLegmwnoUT', // Juan Rodriguez
+  'fKqeUgb4DHI8OjvOvi2Q', // Nickol Montero
+];
+
+/** Count events with appointmentStatus === 'showed' */
+function countShows(events) {
+  let count = 0;
+  for (const e of events) {
+    const status = e.appointmentStatus || e.status || '';
+    if (status === 'showed') count++;
+  }
+  return count;
 }
 
 export default async function handler(req, res) {
@@ -41,67 +70,56 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { start, end } = getMonthRange();
+    const { startMs, endMs } = getMonthRangeMs();
     const monthKey = getCurrentMonth();
 
-    // Get GHL PITs from environment variables
     const pitOrlando = process.env.GHL_PIT_ORLANDO;
     const pitKissimmee = process.env.GHL_PIT_KSS;
 
-    if (!pitOrlando || !pitKissimmee) {
-      console.error('Missing GHL PIT environment variables');
-      return res.status(500).json({
-        error: 'GHL credentials not configured',
-        details: 'Set GHL_PIT_ORLANDO and GHL_PIT_KSS environment variables',
-      });
-    }
-
-    console.log(`Fetching closer sits for ${monthKey}...`);
-
-    // Fetch calendar appointments from both locations
-    const [orlAppts, kssAppts] = await Promise.all([
-      fetchCalendarAppointments(
-        GHL_CONFIG.ORLANDO.locationId,
-        pitOrlando,
-        start,
-        end
-      ),
-      fetchCalendarAppointments(
-        GHL_CONFIG.KISSIMMEE.locationId,
-        pitKissimmee,
-        start,
-        end
-      ),
-    ]);
-
-    console.log(`Orlando: ${orlAppts.length} appointments, Kissimmee: ${kssAppts.length}`);
-
-    // Extract sits (showed appointments) by closer
-    const orlSits = extractCalendarSits(orlAppts, GHL_ID_TO_NAME);
-    const kssSits = extractCalendarSits(kssAppts, GHL_ID_TO_NAME);
-
-    // Merge sits from both locations
-    const allSits = {};
-    [orlSits, kssSits].forEach(sitsMap => {
-      for (const [name, count] of Object.entries(sitsMap)) {
-        allSits[name] = (allSits[name] || 0) + count;
-      }
-    });
-
-    // Filter to only closers
-    const closerNames = new Set([
-      'Fabiola Iorio', 'Laura Indriago', 'María De Gouveia', 'Eleazar Hidalgo',
-      'Christopher Cepeda', 'Juan Rodriguez', 'Nickol Montero',
-    ]);
+    console.log(`Fetching closer sits for ${monthKey} (startMs=${startMs}, endMs=${endMs})...`);
 
     const closerSits = {};
-    for (const [name, count] of Object.entries(allSits)) {
-      if (closerNames.has(name)) {
-        closerSits[name] = count;
+
+    // Helper: fetch events for a list of userIds and accumulate shows
+    async function fetchSitsForClosers(locationId, pit, userIds, label) {
+      if (!pit) {
+        console.warn(`${label}: No PIT configured, skipping`);
+        return;
       }
+      const promises = userIds.map(userId =>
+        fetchCalendarEventsByUserId(locationId, pit, userId, startMs, endMs)
+          .then(events => {
+            const name = GHL_ID_TO_NAME[userId];
+            const shows = countShows(events);
+            console.log(`${label} ${name || userId}: ${events.length} events, ${shows} shows`);
+            if (name && shows > 0) {
+              closerSits[name] = (closerSits[name] || 0) + shows;
+            }
+          })
+          .catch(err => {
+            console.error(`${label} calendar error for userId=${userId}: ${err.message}`);
+          })
+      );
+      await Promise.all(promises);
     }
 
-    console.log(`Closer sits: ${JSON.stringify(closerSits)}`);
+    // Fetch KSS closers (PIT confirmed working)
+    await fetchSitsForClosers(
+      GHL_CONFIG.KISSIMMEE.locationId,
+      pitKissimmee,
+      KSS_CLOSER_IDS,
+      'KSS'
+    );
+
+    // Fetch ORL closers (PIT may be invalid — errors handled gracefully per user)
+    await fetchSitsForClosers(
+      GHL_CONFIG.ORLANDO.locationId,
+      pitOrlando,
+      ORL_CLOSER_IDS,
+      'ORL'
+    );
+
+    console.log(`Closer sits result: ${JSON.stringify(closerSits)}`);
 
     return res.status(200).json({
       monthKey,

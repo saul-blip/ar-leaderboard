@@ -265,6 +265,60 @@ export function extractCalendarSits(appts, idToName) {
 }
 
 /**
+ * Fetch calendar events for a specific user (closer) using /calendars/events
+ * This endpoint requires userId, calendarId, or groupId - we use userId per closer
+ * @param {string} locationId - GHL location ID
+ * @param {string} pit - Private Integration Token
+ * @param {string} userId - GHL user ID of the closer
+ * @param {number} startMs - Start time in milliseconds (Unix timestamp)
+ * @param {number} endMs - End time in milliseconds (Unix timestamp)
+ * @returns {Promise<object[]>} - Array of calendar events
+ */
+export async function fetchCalendarEventsByUserId(locationId, pit, userId, startMs, endMs) {
+  if (!pit) throw new Error(`GHL PIT not configured for location ${locationId}`);
+
+  const allEvents = [];
+  let url = `${GHL_API_BASE}/calendars/events?locationId=${locationId}&userId=${userId}&startTime=${startMs}&endTime=${endMs}`;
+
+  while (url) {
+    try {
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${pit}`,
+          'Version': GHL_API_VERSION,
+        },
+      });
+
+      if (response.status === 429 || response.status === 503) {
+        console.log(`Rate limited (${response.status}), waiting 2s...`);
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        continue;
+      }
+
+      if (!response.ok) {
+        const text = await response.text();
+        console.error(`GHL calendar events error for user ${userId} (${response.status}):`, text.slice(0, 300));
+        break;
+      }
+
+      const data = await response.json();
+      const events = data.events || data.appointments || data.items || [];
+      allEvents.push(...events);
+
+      url = data.meta?.nextPageUrl || null;
+      if (url) await new Promise(resolve => setTimeout(resolve, 50));
+
+    } catch (error) {
+      console.error(`GHL calendar events fetch error for user ${userId}: ${error.message}`);
+      break;
+    }
+  }
+
+  return allEvents;
+}
+
+/**
  * Merge KPIs from multiple locations
  * @param {object[]} kpiArrays - Array of KPI objects
  * @returns {object} - Merged KPIs
