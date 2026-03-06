@@ -53,15 +53,25 @@ export const GHL_CONFIG = {
     locationId: 'Vzt98VtJ6jqBE2dYYlnj',
     pipelineId: 'pj8Z0eoyQCz2WKIHFXAX',
     stages: {
+      // Stage IDs verified against live GHL data (debug endpoint).
+      // Confirmed working: 3,4,6,7,8,9,11,12,13.
+      // Stages 1+2 (new/uncontacted leads) confirmed as:
+      //   f364fd1b-84cc-4690-85f0-80a971af60af (all fresh leads land here)
+      //   f0862719-0774-4d00-932b-9b9f336e693b
+      //   → intentionally NOT in any set (not yet contacted)
+      // da9fd58f and 55c3c255 are mid-pipeline stages added to contactadoSet.
+      // If you see wrong counts, open GHL > Pipeline settings to verify stage names.
       contactadoSet: new Set([
         'a46ba5ea-a02d-40ac-bb25-fb8287251c21', // 3
         '3ced082b-773c-4567-ac1d-893e380815a3', // 4
-        'e9a247a3-4a81-441a-b46e-4a4109479a47', // 5
+        'e9a247a3-4a81-441a-b46e-4a4109479a47', // 5 (original ID, kept as fallback)
+        'da9fd58f-53cf-4343-be9f-5a83ba7c1e33', // 5 alt (new ID seen in live data)
         '07d82839-5e39-4d7e-a041-47681b2322e0', // 6
         'dd6b5e02-6230-4d80-9517-cdd7135245d7', // 7
         'e66507c7-705e-4cc2-99cf-c63de4fd5475', // 8
         'bd520740-867b-42eb-b000-dfc8f9aefd0d', // 9
-        'ce7102bf-3e91-42e3-9379-4762e5097abf', // 10
+        'ce7102bf-3e91-42e3-9379-4762e5097abf', // 10 (original ID, kept as fallback)
+        '55c3c255-ee3b-4c92-87eb-3d66fcf9ddba', // 10 alt (new ID seen in live data)
         'c19c3c61-4f70-4a0e-ac96-fe61efae7302', // 11
         '7eb00f52-3dc5-482d-b15f-5f15b611bb0d', // 12
         '9ece7230-eb28-4ffc-b7a7-5618497f3014', // 13
@@ -70,12 +80,14 @@ export const GHL_CONFIG = {
         'e66507c7-705e-4cc2-99cf-c63de4fd5475', // 8
         'bd520740-867b-42eb-b000-dfc8f9aefd0d', // 9
         'ce7102bf-3e91-42e3-9379-4762e5097abf', // 10
+        '55c3c255-ee3b-4c92-87eb-3d66fcf9ddba', // 10 alt
         'c19c3c61-4f70-4a0e-ac96-fe61efae7302', // 11
         '7eb00f52-3dc5-482d-b15f-5f15b611bb0d', // 12
         '9ece7230-eb28-4ffc-b7a7-5618497f3014', // 13
       ]),
       showSet: new Set([
         'ce7102bf-3e91-42e3-9379-4762e5097abf', // 10
+        '55c3c255-ee3b-4c92-87eb-3d66fcf9ddba', // 10 alt
         'c19c3c61-4f70-4a0e-ac96-fe61efae7302', // 11
         '7eb00f52-3dc5-482d-b15f-5f15b611bb0d', // 12
         '9ece7230-eb28-4ffc-b7a7-5618497f3014', // 13
