@@ -107,7 +107,7 @@ export default async function handler(req, res) {
 
   // Get KSS opportunities full (to see real stage IDs)
   try {
-    const url = `${GHL_API_BASE}/opportunities/search?location_id=${KSS_LOCATION}&pipeline_id=${KSS_PIPELINE}&limit=10`;
+    const url = `${GHL_API_BASE}/opportunities/search?location_id=${KSS_LOCATION}&pipeline_id=${KSS_PIPELINE}&limit=100`;
     const r = await fetch(url, {
       headers: { 'Authorization': `Bearer ${pitKss}`, 'Version': GHL_API_VERSION, 'Content-Type': 'application/json' }
     });
@@ -116,8 +116,29 @@ export default async function handler(req, res) {
     (data.opportunities || []).forEach(o => {
       stageCounts[o.pipelineStageId] = (stageCounts[o.pipelineStageId] || 0) + 1;
     });
-    results.kss_stage_ids = { status: r.status, stageCounts, total: data.meta?.total };
+    results.kss_stage_ids = { status: r.status, stageCounts, total: data.meta?.total, returned: data.opportunities?.length };
   } catch(e) { results.kss_stage_ids = { error: e.message }; }
+
+  // Get KSS calendars list
+  try {
+    const url = `${GHL_API_BASE}/calendars/?locationId=${KSS_LOCATION}`;
+    const r = await fetch(url, {
+      headers: { 'Authorization': `Bearer ${pitKss}`, 'Version': GHL_API_VERSION }
+    });
+    const body = await r.text();
+    results.kss_calendars_list = { status: r.status, ok: r.ok, body: body.slice(0, 800) };
+  } catch(e) { results.kss_calendars_list = { error: e.message }; }
+
+  // Test /calendars/events with a KSS closer userId
+  try {
+    const closerUserId = 'LPtafFQB9QJg9t4YTw98'; // Christopher Cepeda KSS
+    const url = `${GHL_API_BASE}/calendars/events?locationId=${KSS_LOCATION}&userId=${closerUserId}&startTime=${calStartMs}&endTime=${calEndMs}`;
+    const r = await fetch(url, {
+      headers: { 'Authorization': `Bearer ${pitKss}`, 'Version': GHL_API_VERSION }
+    });
+    const body = await r.text();
+    results.kss_cal_by_user = { status: r.status, ok: r.ok, body: body.slice(0, 500) };
+  } catch(e) { results.kss_cal_by_user = { error: e.message }; }
 
   res.setHeader('Content-Type', 'application/json');
   res.status(200).json({
