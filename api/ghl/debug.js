@@ -130,30 +130,31 @@ export default async function handler(req, res) {
     };
   } catch(e) { results.kss_cal_christopher = { error: e.message }; }
 
-  // Test 7: KSS setters current month (to check assignedTo field live)
+  // Test 7a: KSS date filter with 'startDate' param (try alternative to broken 'date' param)
   try {
-    const monthStart = new Date(now2.getFullYear(), now2.getMonth(), 1).toISOString().split('T')[0];
-    const monthEnd = now2.toISOString().split('T')[0];
-    const url = `${GHL_API_BASE}/opportunities/search?location_id=${KSS_LOCATION}&pipeline_id=${KSS_PIPELINE}&limit=10&date=${monthStart}&endDate=${monthEnd}`;
+    const monthStartIso = new Date(now2.getFullYear(), now2.getMonth(), 1).toISOString();
+    const url = `${GHL_API_BASE}/opportunities/search?location_id=${KSS_LOCATION}&pipeline_id=${KSS_PIPELINE}&limit=5&startDate=${encodeURIComponent(monthStartIso)}&endDate=${encodeURIComponent(now2.toISOString())}`;
+    const r = await fetch(url, {
+      headers: { 'Authorization': `Bearer ${pitKss}`, 'Version': GHL_API_VERSION, 'Content-Type': 'application/json' }
+    });
+    const body = await r.text();
+    results.kss_startDate_filter = { status: r.status, ok: r.ok, body: body.slice(0, 300) };
+  } catch(e) { results.kss_startDate_filter = { error: e.message }; }
+
+  // Test 7b: KSS no filter - check first 5 opp createdAt values to verify sort order
+  try {
+    const url = `${GHL_API_BASE}/opportunities/search?location_id=${KSS_LOCATION}&pipeline_id=${KSS_PIPELINE}&limit=5`;
     const r = await fetch(url, {
       headers: { 'Authorization': `Bearer ${pitKss}`, 'Version': GHL_API_VERSION, 'Content-Type': 'application/json' }
     });
     const data = await r.json();
     const opps = data.opportunities || [];
-    results.kss_month_opps = {
+    results.kss_sort_order = {
       status: r.status,
-      total: data.meta?.total,
-      returned: opps.length,
-      // Show assignedTo for first 5
-      assignedTos: opps.slice(0, 5).map(o => ({
-        name: o.name,
-        assignedTo: o.assignedTo,
-        assigned_to: o.assigned_to,
-        pipelineStageId: o.pipelineStageId,
-        createdAt: o.createdAt,
-      })),
+      // Show createdAt for first 5 to verify newest-first sort
+      createdAts: opps.map(o => ({ createdAt: o.createdAt, assignedTo: o.assignedTo, stage: o.pipelineStageId })),
     };
-  } catch(e) { results.kss_month_opps = { error: e.message }; }
+  } catch(e) { results.kss_sort_order = { error: e.message }; }
 
   res.setHeader('Content-Type', 'application/json');
   res.status(200).json({

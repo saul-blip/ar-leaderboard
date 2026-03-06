@@ -85,11 +85,10 @@ export async function fetchAllGHLOpportunities(locationId, pit, pipelineId, mont
   const monthStartMs = new Date(monthStart).getTime();
   const allOpps = [];
 
-  let nextPageUrl = null;
-  // Add date filter server-side to drastically reduce pages fetched
-  const startTs = new Date(monthStart).getTime();
-  const endTs = Date.now();
-  let url = `${GHL_API_BASE}/opportunities/search?location_id=${locationId}&pipeline_id=${pipelineId}&limit=100&date=${monthStart.split('T')[0]}&endDate=${new Date(endTs).toISOString().split('T')[0]}`;
+  // GHL 'date'/'endDate' params cause 400 — do not use server-side date filter.
+  // Instead, rely on API returning opportunities newest-first and exit early
+  // once a full page has zero current-month opps (proven efficient in practice).
+  let url = `${GHL_API_BASE}/opportunities/search?location_id=${locationId}&pipeline_id=${pipelineId}&limit=100`;
 
   while (url) {
     try {
@@ -118,12 +117,17 @@ export async function fetchAllGHLOpportunities(locationId, pit, pipelineId, mont
       const data = await response.json();
       const opps = data.opportunities || [];
 
-      // Filter to only opportunities created this month
+      let pageHasCurrentMonth = false;
       for (const opp of opps) {
         if (new Date(opp.createdAt).getTime() >= monthStartMs) {
           allOpps.push(opp);
+          pageHasCurrentMonth = true;
         }
       }
+
+      // API returns newest first — if an entire page has no current-month opps,
+      // all subsequent pages will be even older, so stop early.
+      if (opps.length > 0 && !pageHasCurrentMonth) break;
 
       url = data.meta?.nextPageUrl || null;
       if (url) await new Promise(resolve => setTimeout(resolve, 50));
